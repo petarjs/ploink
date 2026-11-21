@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>Ploink bar</title>
+  <link rel="stylesheet" href="bar.css" />
+</head>
+<body class="edge-bottom">
+  <div class="stage" id="stage">
+    <div class="plate" id="plate">
+      <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
+      <div class="cockpit-head">
+        <span class="ch-mark"></span><span class="ch-word">PLOINK</span><span class="ch-model">DEPLOY CONSOLE · DC-01</span>
+        <span class="ch-spacer"></span>
+        <span class="ch-gauges" id="ch-gauges"></span>
+        <span class="ch-bank" id="ch-bank"></span>
+        <span class="ch-lamp" id="ch-lamp"><i></i><span id="ch-lamp-label">IDLE</span></span>
+      </div>
+      <div class="row">
+        <button class="knob" id="knob" title="Open the Ploink console"><span class="knob-mark"></span><i class="busy"></i></button>
+        <div class="gauges" id="gauges"></div>
+        <button class="bankdial" id="bankdial" title="Next bank (→)"><span class="bd-knob"><i class="bd-pointer"></i></span><span class="bd-label" id="bd-label">A</span></button>
+        <div class="track" id="track"></div>
+        <button class="style-switch" id="style-switch" title="Switch between mini bar and cockpit"><span class="ss-track"><span class="ss-nub"></span></span><span class="ss-label">XL</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="bubble" id="bubble" aria-live="polite"></div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <script type="module" src="bar.js"></script>
+</body>
+</html>

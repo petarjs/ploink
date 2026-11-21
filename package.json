@@ -1,0 +1,65 @@
+{
+  "name": "ploink",
+  "productName": "Ploink",
+  "version": "0.1.0",
+  "description": "Hold one button, ship the fix. A deploy console for your Mac: one tactile launch button per project, a launch bar, and an MCP server so coding agents can deploy with your permission.",
+  "homepage": "https://ploink.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/petarjs/ploink.git"
+  },
+  "bugs": {
+    "url": "https://github.com/petarjs/ploink/issues"
+  },
+  "author": "Petar Slovic",
+  "license": "MIT",
+  "keywords": [
+    "deploy",
+    "macos",
+    "electron",
+    "mcp",
+    "developer-tools",
+    "launcher",
+    "claude-code",
+    "codex"
+  ],
+  "main": "main/main.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "preview": "node bin/preview-server.mjs",
+    "dist": "electron-builder --mac --dir",
+    "dmg": "electron-builder --mac dmg",
+    "test": "node --test test/*.test.mjs"
+  },
+  "bin": {
+    "ploink-mcp": "bin/ploink-mcp.mjs"
+  },
+  "build": {
+    "appId": "dev.ploink.app",
+    "productName": "Ploink",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        "dir"
+      ]
+    },
+    "files": [
+      "main/**",
+      "renderer/**",
+      "bin/ploink-mcp.mjs",
+      "build/icon.png",
+      "build/trayTemplate.png",
+      "build/trayTemplate@2x.png",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "bin/**"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  }
+}

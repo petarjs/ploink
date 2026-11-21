@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# private: landing page (has seller address, pricing, sales copy) and business notes
+site/
+notes/
