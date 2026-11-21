@@ -2,6 +2,7 @@
 import { h, capVars, colorFromName, monogram, ago, clock, dur, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
+import { applyPack, capColor, word } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
 const $ = (sel) => document.querySelector(sel);
@@ -237,7 +238,7 @@ function render() {
   const runningCount = Object.values(S.latest).filter((r) => r && (r.status === 'running' || r.status === 'starting')).length;
   body.classList.toggle('any-running', runningCount > 0);
   const lamp = document.getElementById('ch-lamp-label');
-  if (lamp) lamp.textContent = runningCount ? `${runningCount} IN FLIGHT` : 'IDLE';
+  if (lamp) lamp.textContent = runningCount ? `${runningCount} ${word('IN FLIGHT')}` : word('IDLE');
 }
 
 function createCap(p) {
@@ -285,7 +286,7 @@ function medal(p) {
 function updateCap(cap) {
   const p = cap.project;
   const run = S.latest[p.id];
-  const { vars, tone } = capVars(p.color || colorFromName(p.name));
+  const { vars, tone } = capVars(capColor(p, cap.index));
   for (const [k, v] of Object.entries(vars)) cap.el.style.setProperty(k, v);
   cap.el.dataset.tone = tone;
   const sig = (p.icon || '').slice(-48) + p.name;
@@ -313,6 +314,7 @@ function updateVfd(cap) {
   else if (run?.status === 'success') line = `✓ ${ago(run.endedAt).toUpperCase()}`;
   else if (!run && p.commands.length) line = 'READY';
   const tone = !p.commands.length ? 'off' : st.tone;
+  line = word(line);
   const cls = `mini-vfd${tone ? ' tone-' + tone : ''}`;
   if (cap.vfd.className !== cls) cap.vfd.className = cls;
   if (cap.vfdName.textContent !== p.name) cap.vfdName.textContent = p.name;
@@ -394,7 +396,7 @@ function showInfoBubble(cap) {
   bubble.className = `bubble ${st.tone ? 'tone-' + st.tone : ''}`;
   bubble.replaceChildren(
     h('h3', {}, p.name),
-    h('div', { class: 'vfd' }, h('span', {}, st.vfd), h('span', {}, st.side)),
+    h('div', { class: 'vfd' }, h('span', {}, word(st.vfd)), h('span', {}, st.side)),
     h('div', { class: 'line' }, st.line),
     h('div', { class: 'hint' }, ACTIVE.has(S.latest[p.id]?.status) && S.latest[p.id].status !== 'awaiting_approval' ? 'click for the live log' : 'hold to launch · right-click for options'),
   );
@@ -425,11 +427,11 @@ function renderAnnounce() {
   const run = S.latest[p.id] || {};
   let tone = '', big = '', line = '', actions = [];
   if (a.status === 'success') {
-    tone = 'ok'; big = 'SHIPPED ✓';
+    tone = 'ok'; big = word('SHIPPED') === 'SHIPPED' ? 'SHIPPED ✓' : word('SHIPPED');
     line = `${run.commandLabel || ''} · ${dur((run.endedAt || 0) - (run.startedAt || 0))}${run.source === 'agent' ? ' · by agent' : ''}`;
     actions = p.url ? [h('button', { onclick: (e) => { e.stopPropagation(); api.openUrl?.(/^https?:/.test(p.url) ? p.url : `https://${p.url}`); } }, 'Open site ↗')] : [];
   } else if (a.status === 'failed') {
-    tone = 'bad'; big = 'FAILED';
+    tone = 'bad'; big = word('FAILED');
     line = run.lastLine || `exit ${run.exitCode}`;
     actions = [h('button', { onclick: (e) => { e.stopPropagation(); openLog(p.id, a.runId); } }, 'View log')];
   } else if (a.status === 'awaiting_approval') {
@@ -555,7 +557,7 @@ function ignite(cap) {
   cap.firedAt = Date.now();
   restartClass(cap.el, 'launch', 500);
   const c = capCenter(cap);
-  fx.ignite(c.x, c.y, c.r + 4);
+  fx.celebrate('launch', c.x, c.y, capColor(cap.project, cap.index), { radius: c.r + 4 });
   sfx.launch();
 }
 
@@ -569,7 +571,7 @@ function ghostPress(cap, audible) {
     cap.el.classList.remove('is-holding');
     restartClass(cap.el, 'launch', 500);
     const c = capCenter(cap);
-    fx.ignite(c.x, c.y, c.r + 4);
+    fx.celebrate('launch', c.x, c.y, capColor(cap.project, cap.index), { radius: c.r + 4 });
     if (audible) sfx.launch();
     setTimeout(() => cap.leds.forEach((l) => l.classList.remove('charge')), 380);
   }, LEDS * 18 + 60);
@@ -610,11 +612,11 @@ function queueResult(projectId, status, audible) {
     const c = capCenter(cap);
     if (status === 'success') {
       restartClass(cap.el, 'just-success', 5200);
-      fx.confetti(c.x, c.y, cap.project.color);
+      fx.celebrate('success', c.x, c.y, capColor(cap.project, cap.index));
       if (audible) sfx.success();
     } else {
       restartClass(cap.el, 'just-failed', 2200);
-      fx.fizzle(c.x, c.y);
+      fx.celebrate('fail', c.x, c.y);
       if (audible) sfx.fail();
     }
   };
@@ -762,6 +764,7 @@ api.on((evt) => {
       break;
     }
     case 'settings': S.settings = evt.settings; configureAudio(S.settings); applyLook(); renderGauges(); break;
+    case 'look': applyPack(evt.look?.pack); render(); break;
     case 'bar:layout': applyLayout(evt.layout); render(); applyLook(); renderGauges(); break;
     case 'usage': S.usage = evt.usage; renderGauges(); break;
     case 'bar:show':
@@ -783,6 +786,7 @@ const state = await api.getState();
 S.projects = state.projects;
 S.settings = state.settings;
 S.latest = state.latest || {};
+applyPack(state.look?.pack);
 configureAudio(S.settings);
 try { S.bank = Number(localStorage.getItem('ploink.bank')) || 0; } catch { S.bank = 0; }
 const qs = new URLSearchParams(location.search);

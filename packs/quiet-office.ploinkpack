@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "id": "dev.ploink.quiet-office",
+  "name": "Quiet Office",
+  "version": "1.0.0",
+  "author": "Ploink",
+  "description": "Soft matte caps, a dim warm readout and gentle clicks. No chord, no confetti, nobody looks up.",
+  "tier": "free",
+  "tokens": {
+    "--chassis": "#1d1e20",
+    "--chassis-top": "#202124",
+    "--chassis-bot": "#1a1b1d",
+    "--topbar-top": "#222326",
+    "--topbar-bot": "#1d1e20",
+    "--bay-top": "#28292c",
+    "--bay-mid": "#232427",
+    "--bay-bot": "#212225",
+    "--vfd": "#e9e3d3",
+    "--vfd-glow": "rgba(233, 227, 211, 0.18)",
+    "--vfd-dim": "rgba(233, 227, 211, 0.42)",
+    "--lcd-1": "#151615",
+    "--lcd-2": "#0d0e0d",
+    "--led-off": "#303236"
+  },
+  "cap": { "material": "matte" },
+  "bezel": { "style": "black" },
+  "led": { "style": "dots" },
+  "readout": { "style": "vfd" },
+  "panel": { "style": "plain" },
+  "sounds": {
+    "press": [
+      { "kind": "noise", "type": "highpass", "freq": 3200, "peak": 0.06, "decay": 0.02 },
+      { "kind": "tone", "type": "sine", "freq": 150, "to": 90, "peak": 0.12, "decay": 0.06 }
+    ],
+    "release": [{ "kind": "tone", "type": "sine", "freq": 420, "to": 620, "peak": 0.05, "decay": 0.07 }],
+    "tick": [{ "kind": "tone", "type": "sine", "freq": 700, "peak": 0.012, "attack": 0.002, "decay": 0.03, "rise": 0.8 }],
+    "launch": [{ "kind": "tone", "type": "sine", "freq": 110, "to": 60, "peak": 0.16, "decay": 0.25 }],
+    "success": [
+      { "kind": "tone", "type": "sine", "freq": 659.25, "peak": 0.07, "attack": 0.01, "decay": 0.35 },
+      { "kind": "tone", "type": "sine", "freq": 987.77, "at": 0.11, "peak": 0.06, "attack": 0.01, "decay": 0.5 }
+    ],
+    "fail": [{ "kind": "tone", "type": "triangle", "freq": 220, "to": 165, "peak": 0.08, "decay": 0.35 }],
+    "request": [
+      { "kind": "tone", "type": "sine", "freq": 880, "peak": 0.06, "decay": 0.25 },
+      { "kind": "tone", "type": "sine", "freq": 659.25, "at": 0.14, "peak": 0.06, "decay": 0.35 }
+    ],
+    "click": [{ "kind": "noise", "type": "highpass", "freq": 3000, "peak": 0.06, "decay": 0.012 }]
+  },
+  "effects": {
+    "launch": { "kind": "none" },
+    "success": { "kind": "flash", "palette": ["#9fe3b8"], "size": 0.8 },
+    "fail": { "kind": "flash", "palette": ["#ff8f86"], "size": 0.7 }
+  },
+  "words": { "IN FLIGHT": "WORKING", "SHIPPED": "DONE" }
+}

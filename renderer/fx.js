@@ -40,7 +40,9 @@ function loop() {
   parts = parts.filter((p) => p.t < p.life && p.y < H + 40);
   for (const p of parts) {
     p.t++;
+    if (p.t <= 0) continue; // delayed (runway lamps, beacon pulses)
     p.px = p.x; p.py = p.y;
+    if (p.sway) p.vx += Math.sin((p.t + p.phase) * 0.05) * p.sway;
     p.vx *= p.drag; p.vy = p.vy * p.drag + p.grav;
     p.x += p.vx; p.y += p.vy;
     const k = p.t / p.life;
@@ -72,6 +74,58 @@ function loop() {
       g.beginPath();
       g.arc(p.x, p.y, p.size * (1 - k * 0.5), 0, Math.PI * 2);
       g.fill();
+    } else if (p.kind === 'pixel') {
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+      g.fillStyle = p.color;
+      const sz = Math.round(p.size);
+      g.fillRect(Math.round(p.x / sz) * sz, Math.round(p.y / sz) * sz, sz, sz);
+    } else if (p.kind === 'flake') {
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = Math.min(1, p.t / 20) * (k > 0.8 ? (1 - k) / 0.2 : 1) * p.alpha;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      g.fill();
+    } else if (p.kind === 'hline') {
+      // a laser line that stretches out sideways from the button
+      g.globalCompositeOperation = 'lighter';
+      const e = 1 - Math.pow(1 - k, 3);
+      const half = 20 + e * p.reach;
+      g.globalAlpha = (1 - k) * 0.9;
+      g.strokeStyle = p.color;
+      g.lineWidth = 2;
+      g.shadowColor = p.color;
+      g.shadowBlur = 10;
+      g.beginPath();
+      g.moveTo(p.x - half, p.y);
+      g.lineTo(p.x + half, p.y);
+      g.stroke();
+      g.shadowBlur = 0;
+    } else if (p.kind === 'glow' || p.kind === 'beacon') {
+      // a soft light: glow swells once, a beacon pulses like a goal light
+      g.globalCompositeOperation = 'lighter';
+      const a = p.kind === 'beacon' ? Math.pow(Math.sin(k * Math.PI * p.pulses), 2) * (1 - k * 0.5) : Math.sin(k * Math.PI);
+      const r = p.size * (p.kind === 'beacon' ? 1 : 0.6 + k * 0.6);
+      const grd = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      grd.addColorStop(0, p.color);
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g.globalAlpha = Math.max(0, a * p.alpha);
+      g.fillStyle = grd;
+      g.beginPath();
+      g.arc(p.x, p.y, r, 0, Math.PI * 2);
+      g.fill();
+    } else if (p.kind === 'lamp') {
+      // runway lights: each lamp flashes once as the sweep passes
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = Math.max(0, 1 - k);
+      g.fillStyle = p.color;
+      g.shadowColor = p.color;
+      g.shadowBlur = 12;
+      g.beginPath();
+      g.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      g.fill();
+      g.shadowBlur = 0;
     } else {
       // confetti
       g.globalCompositeOperation = 'source-over';
@@ -143,10 +197,10 @@ export function ignite(x, y, radius = 62) {
 
 const CONFETTI = ['#ff6b1c', '#ffc53d', '#4be39a', '#74f7d4', '#5aa9ff', '#c38bff', '#ff6fb5', '#ffffff'];
 
-export function confetti(x, y, accent) {
+export function confetti(x, y, accent, { palette, count = 110 } = {}) {
   if (reduce) return;
-  const colors = accent ? [accent, accent, ...CONFETTI] : CONFETTI;
-  for (let i = 0; i < 110; i++) {
+  const colors = palette?.length ? palette : accent ? [accent, accent, ...CONFETTI] : CONFETTI;
+  for (let i = 0; i < count; i++) {
     const a = rand(-Math.PI * 0.92, -Math.PI * 0.08);
     const s = rand(5, 15);
     parts.push({
@@ -156,17 +210,122 @@ export function confetti(x, y, accent) {
       round: Math.random() < 0.2, color: colors[(Math.random() * colors.length) | 0],
     });
   }
-  shockwave(x, y, '#4be39a', { r0: 60, r1: 260, life: 50, w: 4, alpha: 0.7 });
+  shockwave(x, y, palette?.[0] || '#4be39a', { r0: 60, r1: 260, life: 50, w: 4, alpha: 0.7 });
   kick();
 }
 
-export function fizzle(x, y) {
+export function fizzle(x, y, palette) {
   if (reduce) return;
+  const [a1, a2] = palette?.length ? [palette[0], palette[1] || palette[0]] : ['#ff5b52', '#ffb4ae'];
   for (let i = 0; i < 26; i++) {
     const a = rand(-Math.PI, 0);
     const s = rand(1, 4);
-    parts.push({ kind: 'ember', x: x + rand(-40, 40), y: y + rand(-20, 30), vx: Math.cos(a) * s * 0.4, vy: Math.sin(a) * s, drag: 0.96, grav: 0.08, size: rand(1.5, 3), life: rand(30, 60), t: 0, color: i % 3 ? '#ff5b52' : '#ffb4ae' });
+    parts.push({ kind: 'ember', x: x + rand(-40, 40), y: y + rand(-20, 30), vx: Math.cos(a) * s * 0.4, vy: Math.sin(a) * s, drag: 0.96, grav: 0.08, size: rand(1.5, 3), life: rand(30, 60), t: 0, color: i % 3 ? a1 : a2 });
   }
-  shockwave(x, y, '#ff5b52', { r0: 60, r1: 140, life: 26, w: 5, alpha: 0.8 });
+  shockwave(x, y, a1, { r0: 60, r1: 140, life: 26, w: 5, alpha: 0.8 });
   kick();
+}
+
+// ---------------------------------------------------------------- button pack effects
+const pickFrom = (list) => list[(Math.random() * list.length) | 0];
+
+// chunky square pixels that fall like an 8-bit explosion
+export function pixels(x, y, palette, count = 90, size = 1) {
+  if (reduce) return;
+  for (let i = 0; i < count; i++) {
+    const a = rand(-Math.PI, 0.15);
+    const s = rand(3, 11);
+    parts.push({ kind: 'pixel', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, drag: 0.95, grav: 0.34, size: Math.round(rand(3, 6) * size), life: rand(70, 120), t: 0, color: pickFrom(palette) });
+  }
+  shockwave(x, y, palette[0], { r0: 60, r1: 200, life: 30, w: 6, alpha: 0.8 });
+  kick();
+}
+
+// laser lines that stretch out across the deck, plus neon rings
+export function sweep(x, y, palette, size = 1) {
+  if (reduce) return;
+  for (let i = 0; i < 7; i++) {
+    const off = (i - 3) * 14 * size;
+    parts.push({ kind: 'hline', x, y: y + off, vx: 0, vy: 0, drag: 1, grav: 0, reach: W * 0.6, life: 44 + Math.abs(i - 3) * 6, t: -Math.abs(i - 3) * 3, color: palette[i % palette.length] });
+  }
+  palette.slice(0, 3).forEach((c, i) => setTimeout(() => shockwave(x, y, c, { r0: 50, r1: 260 * size, life: 40, w: 3, alpha: 0.9 }), i * 90));
+  kick();
+}
+
+// a soft glow, for quiet packs
+export function flash(x, y, color, size = 1) {
+  if (reduce) return;
+  parts.push({ kind: 'glow', x, y, vx: 0, vy: 0, drag: 1, grav: 0, size: 150 * size, life: 46, t: 0, alpha: 0.55, color });
+  shockwave(x, y, color, { r0: 60, r1: 60 + 70 * size, life: 30, w: 2.5, alpha: 0.55 });
+  kick();
+}
+
+// snow drifting down over the whole window, and a puff of colour at the button
+export function snow(x, y, palette, count = 90) {
+  if (reduce) return;
+  for (let i = 0; i < count; i++) {
+    parts.push({ kind: 'flake', x: rand(0, W), y: rand(-30, H * 0.35), vx: rand(-0.3, 0.3), vy: rand(0.8, 2), drag: 0.995, grav: 0.004, sway: rand(0.005, 0.02), phase: rand(0, 200), size: rand(1.2, 3.4), alpha: rand(0.55, 1), life: rand(220, 340), t: 0, color: '#ffffff' });
+  }
+  confetti(x, y, null, { palette, count: 60 });
+}
+
+// a goal light: red beacon pulses, a horn-shaped flare and an ice spray
+export function goal(x, y, palette, size = 1) {
+  if (reduce) return;
+  const red = palette?.[0] || '#ff2a2a';
+  parts.push({ kind: 'beacon', x, y, vx: 0, vy: 0, drag: 1, grav: 0, size: Math.max(W, H) * 0.7 * size, life: 110, t: 0, pulses: 3, alpha: 0.45, color: red });
+  const ice = palette?.length > 1 ? palette.slice(1) : ['#ffffff', '#cfe8ff', '#9fd3ff'];
+  for (let i = 0; i < 70; i++) {
+    const side = i % 2 ? 1 : -1;
+    const a = side > 0 ? rand(-0.9, 0.1) : Math.PI - rand(-0.9, 0.1);
+    const s = rand(4, 12);
+    parts.push({ kind: 'spark', x: x + side * 30, y: y + 40, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2, drag: 0.93, grav: 0.22, size: rand(1.2, 2.6), life: rand(26, 50), t: 0, color: pickFrom(ice) });
+  }
+  [0, 380, 760].forEach((d) => setTimeout(() => shockwave(x, y, red, { r0: 64, r1: 220, life: 30, w: 5, alpha: 0.8 }), d));
+  kick();
+}
+
+// runway approach lights: lamps flash in sequence out from the button
+export function runway(x, y, palette, size = 1) {
+  if (reduce) return;
+  const colors = palette?.length ? palette : ['#ffd27a', '#ffffff'];
+  const gap = 26 * size;
+  const n = Math.ceil(Math.max(x, W - x) / gap);
+  for (let i = 1; i <= n; i++) {
+    for (const side of [-1, 1]) {
+      for (const row of [-1, 1]) {
+        parts.push({ kind: 'lamp', x: x + side * (70 + i * gap), y: y + row * 22, vx: 0, vy: 0, drag: 1, grav: 0, size: 2.6, life: 22, t: -i * 1.6, color: colors[i % colors.length] });
+      }
+    }
+  }
+  shockwave(x, y, colors[0], { r0: 60, r1: 180, life: 34, w: 3, alpha: 0.8 });
+  kick();
+}
+
+// ---------------------------------------------------------------- dispatch by pack
+let packEffects = {};
+export function setEffects(effects) { packEffects = effects && typeof effects === 'object' ? effects : {}; }
+
+/**
+ * Play the effect for 'launch', 'success' or 'fail' at a button. The pack decides which one;
+ * without a pack: ignite on launch, confetti on success, fizzle on failure.
+ */
+export function celebrate(event, x, y, accent, { radius = 62 } = {}) {
+  const e = packEffects[event] || {};
+  const kind = e.kind || (event === 'launch' ? 'ignite' : event === 'fail' ? 'fizzle' : 'confetti');
+  const pal = e.palette;
+  const size = e.size ?? 1;
+  switch (kind) {
+    case 'none': return;
+    case 'ignite': return ignite(x, y, radius);
+    case 'confetti': return confetti(x, y, accent, { palette: pal, count: e.count });
+    case 'pixels': return pixels(x, y, pal || [accent || '#ff2d55', '#ffd60a', '#ffffff'], e.count, size);
+    case 'sweep': return sweep(x, y, pal || ['#ff3df2', '#3df5ff'], size);
+    case 'flash': return flash(x, y, pal?.[0] || accent || '#4be39a', size);
+    case 'snow': return snow(x, y, pal, e.count);
+    case 'goal': return goal(x, y, pal, size);
+    case 'runway': return runway(x, y, pal, size);
+    case 'fizzle': return fizzle(x, y, pal);
+    default: return event === 'fail' ? fizzle(x, y) : confetti(x, y, accent);
+  }
 }

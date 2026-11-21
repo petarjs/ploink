@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS = {
     style: 'mini', // 'mini' (floating strip) | 'cockpit' (big console flush with the screen edge)
   },
   buttonShape: 'round', // 'round' | 'square'
+  pack: 'dev.ploink.mission-control', // button pack id (see main/packs.mjs)
   iconScale: 0.5, // icon medal size as a share of the button
   barLabels: true, // project names under the launch bar buttons
   usage: { claude: true, codex: true }, // AI plan usage gauges

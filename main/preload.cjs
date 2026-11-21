@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('ploink', {
   connectClaude: invoke('usage:connectClaude'),
   disconnectClaude: invoke('usage:disconnectClaude'),
   saveSettings: invoke('settings:save'),
+  // button packs + Pro
+  getLook: invoke('look:get'),
+  activatePro: invoke('license:activate'),
+  deactivatePro: invoke('license:deactivate'),
+  refreshPro: invoke('license:refresh'),
+  installPack: invoke('pack:install'),
+  removePack: invoke('pack:remove'),
   hide: invoke('app:hide'),
   copy: invoke('app:copy'),
   reveal: invoke('app:reveal'),

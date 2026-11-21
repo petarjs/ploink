@@ -1,0 +1,241 @@
+/* ==========================================================================
+   Button pack building blocks, shared by the console and the launch bar.
+   look.js sets data-cap, data-bezel, data-led, data-readout and data-panel on
+   <html>. The defaults (gloss, steel, dots, vfd, plain) have no rules here, so
+   the classic look is exactly what styles.css and bar.css draw.
+   ========================================================================== */
+
+/* ---------- cap materials ---------- */
+
+/* concave: a dished arcade cap with a bright rim */
+html[data-cap='concave'] :is(.cap-face, .mini-face) {
+  background:
+    radial-gradient(60% 50% at 50% 92%, rgba(255, 255, 255, 0.28), transparent 70%),
+    radial-gradient(85% 75% at 50% 20%, rgba(0, 0, 0, 0.38), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--cap) 72%, black), var(--cap) 55%, var(--cap-hi));
+  box-shadow:
+    inset 0 0 0 4px color-mix(in srgb, var(--cap-hi) 70%, var(--cap)),
+    inset 0 5px 9px 4px rgba(0, 0, 0, 0.35),
+    inset 0 -2px 2px rgba(255, 255, 255, 0.35);
+}
+html[data-cap='concave'] .mini-face { box-shadow: inset 0 0 0 2.5px color-mix(in srgb, var(--cap-hi) 70%, var(--cap)), inset 0 3px 6px 2px rgba(0, 0, 0, 0.35); }
+
+/* matte: soft-touch rubber, no shine */
+html[data-cap='matte'] :is(.cap-face, .mini-face) {
+  background:
+    radial-gradient(90% 80% at 50% 10%, rgba(255, 255, 255, 0.08), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--cap) 74%, #a3a3a3), color-mix(in srgb, var(--cap) 70%, #2a2a2a));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 -2px 4px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+html[data-cap='matte'] :is(.cap-side, .mini-side) { background: linear-gradient(90deg, color-mix(in srgb, var(--cap) 45%, #222), color-mix(in srgb, var(--cap) 60%, #333) 50%, color-mix(in srgb, var(--cap) 45%, #222)); }
+html[data-cap='matte'] .cap-face::after { opacity: 0.2; }
+
+/* glass: a neon tube under a clear dome */
+html[data-cap='glass'] :is(.cap-face, .mini-face) {
+  background:
+    radial-gradient(70% 40% at 50% 6%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(80% 60% at 50% 115%, color-mix(in srgb, var(--cap) 90%, white) 0%, transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--cap) 35%, #0a0614), color-mix(in srgb, var(--cap) 65%, #0a0614));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--cap) 80%, white),
+    inset 0 0 16px color-mix(in srgb, var(--cap) 70%, transparent),
+    0 0 18px -2px var(--cap-glow);
+}
+html[data-cap='glass'] :is(.cap-side, .mini-side) {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cap) 30%, #07040d), color-mix(in srgb, var(--cap) 55%, #07040d) 50%, color-mix(in srgb, var(--cap) 30%, #07040d));
+  box-shadow: 0 0 14px -2px var(--cap-glow);
+}
+
+/* metal: a machined aluminium knob with the project colour as a ring */
+html[data-cap='metal'] :is(.cap-face, .mini-face) {
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.07) 0 1px, rgba(0, 0, 0, 0.05) 1px 2px),
+    conic-gradient(from 200deg, #8f939b, #eef0f3 12%, #8a8e96 26%, #f4f5f7 41%, #7d8189 56%, #dfe2e6 71%, #868a92 86%, #8f939b);
+  box-shadow: inset 0 0 0 3px var(--cap), inset 0 0 0 4px rgba(0, 0, 0, 0.35), inset 0 2px 1px rgba(255, 255, 255, 0.6), inset 0 -3px 6px rgba(0, 0, 0, 0.25);
+}
+html[data-cap='metal'] .mini-face { box-shadow: inset 0 0 0 2px var(--cap), inset 0 0 0 3px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.6); }
+html[data-cap='metal'] :is(.cap-side, .mini-side) { background: repeating-linear-gradient(90deg, #4c4f55 0 2px, #a3a6ad 2px 3px, #6b6e75 3px 5px); }
+html[data-cap='metal'] .cap-face::after { mix-blend-mode: overlay; }
+
+/* puck: black vulcanised rubber with a knurled edge */
+html[data-cap='puck'] :is(.cap-face, .mini-face) {
+  background:
+    radial-gradient(70% 50% at 50% 12%, rgba(255, 255, 255, 0.12), transparent 70%),
+    radial-gradient(circle at 50% 45%, #2a2b2f, #0c0c0e 72%);
+  box-shadow: inset 0 0 0 6px #121214, inset 0 0 0 8px var(--cap), inset 0 2px 1px rgba(255, 255, 255, 0.18), inset 0 -3px 6px rgba(0, 0, 0, 0.5);
+}
+html[data-cap='puck'] .mini-face { box-shadow: inset 0 0 0 3px #121214, inset 0 0 0 4.5px var(--cap), inset 0 1px 1px rgba(255, 255, 255, 0.18); }
+html[data-cap='puck'] :is(.cap-side, .mini-side) { background: repeating-linear-gradient(90deg, #151517 0 3px, #2d2d31 3px 5px); }
+html[data-cap='puck'] .cap-face::after { opacity: 0.35; }
+
+/* ornament: a glass bauble with a gold collar */
+html[data-cap='ornament'] :is(.cap-face, .mini-face) {
+  background:
+    radial-gradient(22% 16% at 34% 24%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 100%),
+    radial-gradient(60% 45% at 50% 18%, rgba(255, 255, 255, 0.32), transparent 70%),
+    radial-gradient(circle at 50% 45%, var(--cap-hi), var(--cap) 45%, var(--cap-lo) 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 214, 120, 0.75), inset 0 0 0 4px rgba(120, 80, 10, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.3);
+}
+html[data-cap='ornament'] :is(.cap-side, .mini-side) { background: linear-gradient(90deg, #7a5a12, #e2b84a 35%, #f6d77a 50%, #b88a24 70%, #6f5010); }
+
+/* ---------- bezels (the ring around the hole) ---------- */
+html[data-bezel='black'] .bezel { background: conic-gradient(from 210deg, #111214, #3a3c42 12%, #17181b 30%, #44464c 45%, #141517 60%, #2e3035 80%, #111214); }
+html[data-bezel='brass'] .bezel { background: conic-gradient(from 210deg, #6f5010, #e2b84a 12%, #8a6a1c 26%, #f6d77a 40%, #7a5a12 55%, #d4a83a 70%, #6f5010 85%, #c9a23e); }
+html[data-bezel='chrome'] .bezel { background: conic-gradient(from 210deg, #8d9199, #ffffff 10%, #767a82 22%, #f4f6f8 36%, #6e727a 50%, #e6e9ec 63%, #7b7f87 76%, #ffffff 88%, #8d9199); }
+html[data-bezel='neon'] .bezel {
+  background: radial-gradient(circle, #0b0716 60%, #160d2a);
+  box-shadow: 0 0 0 2px var(--vfd), 0 0 18px var(--vfd-glow), inset 0 0 0 2px var(--vfd), inset 0 0 14px var(--vfd-glow), 0 10px 18px -6px rgba(0, 0, 0, 0.8);
+}
+html[data-bezel='black'] .mini-core::before { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), 0 0 0 2px #1a1b1e, 0 0 0 3px rgba(0, 0, 0, 0.6); }
+html[data-bezel='brass'] .mini-core::before { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), 0 0 0 2px #c9a23e, 0 0 0 3px rgba(0, 0, 0, 0.6); }
+html[data-bezel='chrome'] .mini-core::before { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), 0 0 0 2px #dfe2e6, 0 0 0 3px rgba(0, 0, 0, 0.6); }
+html[data-bezel='neon'] .mini-core::before { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), 0 0 0 1.5px var(--vfd), 0 0 10px var(--vfd-glow); }
+
+/* ---------- LED styles ---------- */
+
+/* segments: short bars instead of dots */
+html[data-led='segments'] .led { width: 3px; height: 10px; margin: -5px 0 0 -1.5px; border-radius: 1.5px; }
+html[data-led='segments'] .mini .led { width: 2.5px; height: 7px; margin: -3.5px 0 0 -1.25px; }
+
+/* comet: a bright head with a long fading tail while running */
+html[data-led='comet'] .bay.is-running .led { animation: comet 1s linear infinite; animation-delay: calc(var(--i) * -0.0417s); }
+html[data-led='comet'] .mini.is-running .led { animation: comet 0.9s linear infinite; animation-delay: calc(var(--i) * -0.0563s); }
+@keyframes comet {
+  0% { background: #fff; box-shadow: 0 0 8px 2px var(--vfd), 0 0 18px var(--vfd); }
+  10% { background: var(--vfd); box-shadow: 0 0 6px var(--vfd), 0 0 12px var(--vfd-glow); }
+  60% { background: color-mix(in srgb, var(--vfd) 22%, var(--led-off, #2a2c31)); box-shadow: 0 0 3px var(--vfd-glow); }
+  100% { background: var(--led-off, #2a2c31); box-shadow: none; }
+}
+
+/* bulbs: a string of coloured lights that twinkle when idle */
+html[data-led='bulbs'] .led {
+  --bulb: var(--led-1, #ff3b3b);
+  width: 7px; height: 8px; margin: -4px 0 0 -3.5px; border-radius: 50% 50% 46% 46%;
+  background: color-mix(in srgb, var(--bulb) 38%, #161616);
+  box-shadow: 0 0 3px color-mix(in srgb, var(--bulb) 55%, transparent);
+  animation: twinkle 2.6s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.41s);
+}
+html[data-led='bulbs'] .mini .led { width: 5px; height: 6px; margin: -3px 0 0 -2.5px; }
+html[data-led='bulbs'] .led:nth-child(4n + 2) { --bulb: var(--led-2, #3bd16f); }
+html[data-led='bulbs'] .led:nth-child(4n + 3) { --bulb: var(--led-3, #ffc93b); }
+html[data-led='bulbs'] .led:nth-child(4n + 4) { --bulb: var(--led-4, #4aa3ff); }
+@keyframes twinkle { 50% { background: var(--bulb); box-shadow: 0 0 6px var(--bulb), 0 0 12px var(--bulb); } }
+html[data-led='bulbs'] .led.charge { background: var(--bulb); box-shadow: 0 0 6px var(--bulb), 0 0 14px var(--bulb); animation: none; }
+html[data-led='bulbs'] :is(.bay, .mini).is-running .led { animation: bulbChase 1.2s linear infinite; animation-delay: calc(var(--i) * -0.05s); }
+@keyframes bulbChase {
+  0%, 20% { background: var(--bulb); box-shadow: 0 0 7px var(--bulb), 0 0 16px var(--bulb); }
+  60%, 100% { background: color-mix(in srgb, var(--bulb) 30%, #161616); box-shadow: none; }
+}
+
+/* ---------- readouts ---------- */
+
+/* seven-segment: slanted, heavy digits */
+html[data-readout='seven-seg'] :is(.lcd-status, .lcd-side) { display: inline-block; font-style: italic; font-weight: 800; letter-spacing: 0.2em; transform: skewX(-7deg); }
+html[data-readout='seven-seg'] .lcd::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px); }
+html[data-readout='seven-seg'] .mini-vfd .s { font-style: italic; font-weight: 800; letter-spacing: 0.18em; }
+
+/* dot-matrix: every glyph drawn with dots */
+html[data-readout='dot-matrix'] :is(.lcd-status, .lcd-side, .lcd-ticker, .mini-vfd .s) {
+  -webkit-mask-image: radial-gradient(circle, #000 55%, transparent 62%);
+  -webkit-mask-size: 2px 2px;
+  mask-image: radial-gradient(circle, #000 55%, transparent 62%);
+  mask-size: 2px 2px;
+}
+html[data-readout='dot-matrix'] .lcd-status { font-size: 12.5px; letter-spacing: 0.14em; }
+html[data-readout='dot-matrix'] .lcd-ticker { font-size: 10.5px; }
+
+/* backlit: dark text on a glowing panel, like a 70s receiver; the tone colours the light */
+html[data-readout='backlit'] :is(.lcd, .mini-vfd) {
+  background: radial-gradient(130% 160% at 50% 0%, color-mix(in srgb, var(--vfd) 72%, white), var(--vfd) 75%);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 16px -4px var(--vfd-glow), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-readout='backlit'] .lcd-status { color: rgba(29, 20, 6, 0.92); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); }
+html[data-readout='backlit'] :is(.lcd-side, .lcd-ticker) { color: rgba(29, 20, 6, 0.66); text-shadow: none; }
+html[data-readout='backlit'] .lcd-badge { background: #1d1406; color: var(--vfd); box-shadow: none; }
+html[data-readout='backlit'] .lcd-status .dot { background: #1d1406; box-shadow: none; }
+html[data-readout='backlit'] .mini-vfd :is(.n, .s) { color: #1d1406; text-shadow: none; }
+html[data-readout='backlit'] :is(.lcd, .mini-vfd)::after { background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px); }
+
+/* ---------- panels (the chassis around the bays; console only) ---------- */
+
+/* wood: walnut cabinet, brushed bays */
+html[data-panel='wood'] .chassis {
+  background:
+    repeating-linear-gradient(91deg, rgba(0, 0, 0, 0.14) 0 2px, transparent 2px 9px, rgba(255, 220, 170, 0.05) 9px 10px, transparent 10px 17px),
+    repeating-linear-gradient(88deg, rgba(0, 0, 0, 0.09) 0 7px, transparent 7px 23px),
+    linear-gradient(180deg, var(--chassis-top, #3b2414), var(--chassis-bot, #26160b));
+}
+html[data-panel='wood'] .bay::before { background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px); opacity: 1; mix-blend-mode: normal; }
+
+/* grid: a synthwave horizon with a scrolling floor */
+html[data-panel='grid'] .chassis {
+  background:
+    radial-gradient(60% 40% at 50% 100%, rgba(255, 92, 170, 0.35), transparent 70%),
+    linear-gradient(180deg, var(--chassis-top, #120626), var(--chassis-bot, #2a0a3d) 70%, #3d0b48);
+}
+html[data-panel='grid'] .chassis::after {
+  content: ''; position: absolute; left: -50%; right: -50%; bottom: 0; height: 55%; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(255, 61, 242, 0.5) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(61, 245, 255, 0.4) 1.5px, transparent 1.5px);
+  background-size: 64px 40px;
+  transform: perspective(320px) rotateX(62deg); transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(0deg, #000 10%, transparent 85%);
+  mask-image: linear-gradient(0deg, #000 10%, transparent 85%);
+  animation: gridRun 1.8s linear infinite;
+}
+@keyframes gridRun { to { background-position: 0 40px, 0 0; } }
+
+/* scanlines: an arcade CRT */
+html[data-panel='scanlines'] .chassis::after {
+  content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.65);
+}
+
+/* rink: dark arena ice with the red and blue lines */
+html[data-panel='rink'] .chassis {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 3px), rgba(220, 38, 48, 0.55) calc(50% - 3px) calc(50% + 3px), transparent calc(50% + 3px)),
+    linear-gradient(90deg, transparent 20%, rgba(44, 110, 230, 0.45) 20% calc(20% + 7px), transparent calc(20% + 7px) calc(80% - 7px), rgba(44, 110, 230, 0.45) calc(80% - 7px) 80%, transparent 80%),
+    radial-gradient(circle at 50% 56%, transparent 96px, rgba(44, 110, 230, 0.5) 97px 100px, transparent 101px),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 7px),
+    radial-gradient(120% 90% at 50% 40%, var(--chassis-top, #1b2a3a), var(--chassis-bot, #0d1621));
+}
+
+/* frost: falling snow, and snow on every bay */
+html[data-panel='frost'] .chassis::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1.5px 1.5px at 90px 120px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(2.5px 2.5px at 160px 60px, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1.5px 1.5px at 60px 170px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(2px 2px at 130px 190px, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 200px 200px;
+  animation: snowfall 16s linear infinite;
+}
+@keyframes snowfall { to { background-position: 30px 200px, -20px 200px, 15px 200px, -10px 200px, 25px 200px; } }
+html[data-panel='frost'] .bay::after {
+  content: ''; position: absolute; left: 14px; right: 14px; top: -6px; height: 17px; z-index: 3; pointer-events: none;
+  border-radius: 10px 10px 0 0;
+  background:
+    linear-gradient(180deg, #ffffff, #e6f0f8) 0 0 / 100% 9px no-repeat,
+    radial-gradient(circle at 16% 8px, #e6f0f8 5px, transparent 5.5px),
+    radial-gradient(circle at 41% 8px, #e6f0f8 3.5px, transparent 4px),
+    radial-gradient(circle at 63% 8px, #e6f0f8 2.5px, transparent 3px),
+    radial-gradient(circle at 82% 8px, #e6f0f8 6px, transparent 6.5px);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+}
+
+/* hazard: caution stripes, like a cockpit panel */
+html[data-panel='hazard'] .topbar::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; pointer-events: none;
+  background: repeating-linear-gradient(-45deg, #f2b705 0 8px, #15160f 8px 16px);
+  opacity: 0.85;
+}
+html[data-panel='hazard'] .bay-num { color: var(--warn); }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-panel] .chassis::after { animation: none; }
+  html[data-led='bulbs'] .led { animation: none; }
+}

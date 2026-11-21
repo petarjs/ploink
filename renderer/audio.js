@@ -57,7 +57,7 @@ function tone({ type = 'sine', freq = 440, to = null, at = 0, attack = 0.004, pe
   o.stop(t + attack + decay + 0.05);
 }
 
-function noise({ at = 0, attack = 0.002, peak = 0.3, decay = 0.08, type = 'bandpass', freq = 2000, to = null, q = 1 }) {
+function noise({ at = 0, attack = 0.002, peak = 0.3, decay = 0.08, type = 'bandpass', freq = 2000, to = null, q = 1, dest = null }) {
   const c = ac();
   if (!c || !enabled) return;
   const t = c.currentTime + at;
@@ -70,7 +70,7 @@ function noise({ at = 0, attack = 0.002, peak = 0.3, decay = 0.08, type = 'bandp
   f.Q.value = q;
   const g = c.createGain();
   env(g, t, attack, peak, decay);
-  src.connect(f).connect(g).connect(master);
+  src.connect(f).connect(g).connect(dest || master);
   src.start(t, Math.random());
   src.stop(t + attack + decay + 0.05);
 }
@@ -95,7 +95,7 @@ function echo() {
   return input;
 }
 
-export const sfx = {
+const DEFAULT_SFX = {
   // mechanical click when the cap starts to travel
   press() {
     noise({ peak: 0.22, decay: 0.03, type: 'highpass', freq: 2500 });
@@ -173,3 +173,25 @@ export const sfx = {
     tone({ type: 'sine', freq: 220, to: 440, peak: 0.04, attack: 0.02, decay: 0.18 });
   },
 };
+
+// ---- button packs: a pack may replace any sound with a recipe of tone and noise steps ----
+let packSounds = {};
+export function setSoundPack(sounds) { packSounds = sounds && typeof sounds === 'object' ? sounds : {}; }
+
+function playSteps(steps, i = 0, total = 24) {
+  for (const st of steps) {
+    // "rise": a tick climbs this many octaves over a full charge
+    const k = st.rise !== undefined ? Math.pow(2, (i / total) * st.rise) : 1;
+    const dest = st.echo ? echo() : null;
+    const common = { at: st.at, attack: st.attack, peak: st.peak, decay: st.decay, freq: st.freq * k, to: st.to ? st.to * k : null, dest };
+    if (st.kind === 'noise') noise({ ...common, type: st.type, q: st.q ?? 1 });
+    else tone({ ...common, type: st.type, detune: st.detune || 0 });
+  }
+}
+
+/** Every sound the app plays. Uses the pack's recipe when it has one ([] means silence). */
+export const sfx = Object.fromEntries(Object.keys(DEFAULT_SFX).map((name) => [name, (...args) => {
+  const steps = packSounds[name];
+  if (Array.isArray(steps)) return playSteps(steps, args[0] ?? 0, args[1] ?? 24);
+  return DEFAULT_SFX[name](...args);
+}]));

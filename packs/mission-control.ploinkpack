@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "dev.ploink.mission-control",
+  "name": "Mission Control",
+  "version": "1.0.0",
+  "author": "Ploink",
+  "description": "The classic console: graphite chassis, glossy caps, a cyan VFD and the launch chord.",
+  "tier": "free"
+}

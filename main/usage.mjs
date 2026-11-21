@@ -356,7 +356,7 @@ export class Usage extends EventEmitter {
           }
         }
       });
-      send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'ploink', version: '0.1.0' } } });
+      send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'ploink', version: '0.2.0' } } });
     });
   }
 

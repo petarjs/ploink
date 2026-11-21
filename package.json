@@ -1,7 +1,7 @@
 {
   "name": "ploink",
   "productName": "Ploink",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Hold one button, ship the fix. A deploy console for your Mac: one tactile launch button per project, a launch bar, and an MCP server so coding agents can deploy with your permission.",
   "homepage": "https://ploink.dev",
   "repository": {
@@ -30,7 +30,8 @@
     "preview": "node bin/preview-server.mjs",
     "dist": "electron-builder --mac --dir",
     "dmg": "electron-builder --mac dmg",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "release": "node scripts/release.mjs"
   },
   "bin": {
     "ploink-mcp": "bin/ploink-mcp.mjs"
@@ -48,6 +49,8 @@
     "files": [
       "main/**",
       "renderer/**",
+      "packs/**",
+      "pro/**",
       "bin/ploink-mcp.mjs",
       "build/icon.png",
       "build/trayTemplate.png",

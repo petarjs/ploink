@@ -10,6 +10,9 @@ import { createMcp } from './mcp.mjs';
 import { createBar } from './bar.mjs';
 import { Usage } from './usage.mjs';
 import { loadShellEnv } from './shellenv.mjs';
+import { loadPackDir, packCatalog, resolvePack, packLocked, installPackFile, removePackFile, DEFAULT_PACK_ID } from './packs.mjs';
+import { License } from './license.mjs';
+import { loadPro } from './extensions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -27,6 +30,9 @@ let runner;
 let mcp;
 let bar;
 let usage;
+let license;
+let pro = null; // the private Pro module, only in official builds
+let catalog = [];
 let shortcutState = { ok: true, error: null };
 
 // ---------- helpers ----------
@@ -49,6 +55,36 @@ function actionRuns() {
   return out;
 }
 
+// ---------- look: button packs + Pro ----------
+const userPackDir = () => path.join(app.getPath('userData'), 'packs');
+
+function rebuildCatalog() {
+  catalog = packCatalog({
+    builtin: loadPackDir(path.join(ROOT, 'packs')),
+    pro: pro?.packs || [],
+    community: loadPackDir(userPackDir()),
+  });
+}
+
+function lookState() {
+  const unlocked = license.active;
+  return {
+    pack: resolvePack(catalog, store.settings.pack, { pro: unlocked }),
+    packs: catalog.map((p) => ({ ...p, locked: packLocked(p, unlocked) })),
+    license: license.view(),
+    proBuild: !!pro,
+    proVersion: pro?.version || '',
+  };
+}
+
+const sendLook = () => send('look', { look: lookState() });
+
+async function refreshLicense(force = false) {
+  const res = await license.refresh({ force }).catch(() => null);
+  if (res?.changed || force) sendLook();
+  return res;
+}
+
 function publicState() {
   const latest = {};
   for (const p of store.projects) latest[p.id] = runner.summary(runner.latestRunFor(p.id));
@@ -62,6 +98,7 @@ function publicState() {
     platform: process.platform,
     appPath: ROOT.replace(/app\.asar(?=$|\/)/, 'app.asar.unpacked'),
     version: app.getVersion(),
+    look: lookState(),
   };
 }
 
@@ -465,6 +502,7 @@ function setupIpc() {
     if (patch.launchAtLogin !== undefined && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!patch.launchAtLogin });
     if (patch.bar || patch.shortcutOpens || patch.barLabels !== undefined || patch.usage) bar?.applySettings();
     send('settings', { settings });
+    if (patch.pack !== undefined) sendLook();
     return { settings, shortcut: shortcutState, mcp: mcp.state, ...result };
   });
 
@@ -488,6 +526,30 @@ function setupIpc() {
     try { return usage.connectClaude(); } catch (err) { return { ok: false, error: err.message }; }
   });
   ipcMain.handle('usage:disconnectClaude', () => { try { return usage.disconnectClaude(); } catch (err) { return { ok: false, error: err.message }; } });
+  ipcMain.handle('look:get', () => lookState());
+  ipcMain.handle('license:activate', async (_e, key) => {
+    const res = await license.activate(String(key || '').slice(0, 200));
+    if (res.ok) sendLook();
+    return { ...res, look: lookState() };
+  });
+  ipcMain.handle('license:deactivate', () => { license.deactivate(); sendLook(); return lookState(); });
+  ipcMain.handle('license:refresh', async () => { await refreshLicense(true); return lookState(); });
+  ipcMain.handle('pack:install', (_e, file) => {
+    const res = installPackFile(String(file || ''), userPackDir());
+    if (res.error) return { error: res.error };
+    rebuildCatalog();
+    store.updateSettings({ pack: res.pack.id });
+    send('settings', { settings: store.settings });
+    sendLook();
+    return { pack: { id: res.pack.id, name: res.pack.name }, warnings: res.warnings, look: lookState() };
+  });
+  ipcMain.handle('pack:remove', (_e, id) => {
+    const ok = removePackFile(String(id || ''), userPackDir());
+    rebuildCatalog();
+    if (store.settings.pack === id) { store.updateSettings({ pack: DEFAULT_PACK_ID }); send('settings', { settings: store.settings }); }
+    sendLook();
+    return { ok, look: lookState() };
+  });
   ipcMain.handle('activity:get', (_e, limit = 400) => store.activity.slice(0, limit));
   ipcMain.handle('app:hide', () => hideWindow());
   ipcMain.handle('app:copy', (_e, textValue) => { clipboard.writeText(String(textValue)); return true; });
@@ -555,6 +617,9 @@ app.whenReady().then(async () => {
   migrateFromLiftoff(app.getPath('userData'));
   store = new Store(app.getPath('userData'));
   runner = new Runner(store);
+  license = new License({ dir: app.getPath('userData') });
+  pro = await loadPro(ROOT);
+  rebuildCatalog();
   loadShellEnv(); // warm up in the background
 
   usage = new Usage({ dir: app.getPath('userData') });
@@ -637,6 +702,10 @@ app.whenReady().then(async () => {
   registerShortcut(store.settings.shortcut);
   if (store.settings.mcpEnabled) await mcp.start(Number(store.settings.mcpPort));
   send('mcp', { mcp: mcp.state });
+  try { pro?.activate?.({ store, runner, mcp, license, send, ipcMain }); } catch (err) { console.error('[ploink] Pro activate failed:', err); }
+  // re-check the Pro license shortly after launch, then every few hours (it only calls out once a day)
+  setTimeout(() => refreshLicense(), 8000);
+  setInterval(() => refreshLicense(), 3 * 3600e3);
 
   const dockIcon = path.join(ROOT, 'build/icon.png');
   if (process.platform === 'darwin' && !app.isPackaged && fs.existsSync(dockIcon)) app.dock?.setIcon(dockIcon);

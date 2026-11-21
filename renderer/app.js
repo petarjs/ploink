@@ -1,6 +1,7 @@
 import { h, capVars, colorFromIcon, colorFromName, monogram, ansiToHtml, ago, clock, dur, hostOf, CAP_COLORS, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
+import { applyPack, capColor, word, previewVars } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -248,7 +249,7 @@ function updateBay(bay) {
   const p = bay.project;
   const { el, refs } = bay;
   const run = S.latest[p.id];
-  const { vars, tone } = capVars(p.color || colorFromName(p.name));
+  const { vars, tone } = capVars(capColor(p, bay.index));
   for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
   el.dataset.tone = tone;
   refs.num.textContent = String(bay.index + 1).padStart(2, '0');
@@ -620,13 +621,14 @@ function updateLcd(bay) {
       o = { ...o, ...d };
     }
     refs.lcd.className = `lcd ${o.tone ? 'tone-' + o.tone : ''}`;
-    refs.status.textContent = o.status;
+    refs.status.textContent = word(o.status);
     refs.status.dataset.s = '';
     refs.side.textContent = o.side || '';
     refs.ticker.textContent = o.ticker || '';
     return;
   }
   const d = lcdFor(bay.project, S.latest[bay.project.id]);
+  d.status = word(d.status);
   const cls = `lcd ${d.tone ? 'tone-' + d.tone : ''}`;
   if (refs.lcd.className !== cls) refs.lcd.className = cls;
   if (refs.status.dataset.s !== d.status + !!d.live) {
@@ -745,7 +747,7 @@ function launchFx(bay, audible = true) {
   bay.firedAt = Date.now();
   const { x, y } = capCenter(bay);
   restartClass(bay.el, 'launch', 650);
-  fx.ignite(x, y);
+  fx.celebrate('launch', x, y, capColor(bay.project, bay.index));
   if (audible) sfx.launch();
 }
 
@@ -799,12 +801,12 @@ function transition(bay, prevStatus, run) {
   } else if (s === 'success' && prevStatus) {
     restartClass(bay.el, 'just-success', 5200);
     const { x, y } = capCenter(bay);
-    fx.confetti(x, y, bay.project.color);
+    fx.celebrate('success', x, y, capColor(bay.project, bay.index));
     if (audible) sfx.success();
   } else if (s === 'failed' && prevStatus) {
     restartClass(bay.el, 'just-failed', 2200);
     const { x, y } = capCenter(bay);
-    fx.fizzle(x, y);
+    fx.celebrate('fail', x, y);
     if (audible) sfx.fail();
   } else if ((s === 'denied' || s === 'expired') && prevStatus) {
     if (audible) sfx.denied();
@@ -837,7 +839,7 @@ function updateLamps() {
   const waiting = runs.filter((r) => r.status === 'awaiting_approval').length;
   const lamp = $('#lamp-active');
   lamp.classList.toggle('busy', running > 0 || waiting > 0);
-  $('#lamp-active-label').textContent = running ? `${running} DEPLOYING` : waiting ? `${waiting} WAITING` : 'IDLE';
+  $('#lamp-active-label').textContent = running ? `${running} DEPLOYING` : waiting ? `${waiting} WAITING` : word('IDLE');
 
   const agent = $('#lamp-agent');
   agent.classList.toggle('on', !!S.mcp.running);
@@ -949,7 +951,7 @@ function renderDrawerHead() {
   if (!p) return closeDrawer();
   const liveAction = Object.values(S.actions[p.id] || {}).find((r) => r.id === S.drawer.runId);
   const run = S.drawer.runId === S.latest[p.id]?.id ? S.latest[p.id] : liveAction || (S.drawer.history || []).find((r) => r.id === S.drawer.runId);
-  const { vars } = capVars(p.color);
+  const { vars } = capVars(capColor(p, Math.max(0, (S.order || []).indexOf(p.id))));
   for (const [k, v] of Object.entries(vars)) D.icon.style.setProperty(k, v);
   D.icon.replaceChildren(p.icon ? h('img', { src: p.icon, alt: '' }) : h('b', {}, monogram(p.name)));
   D.title.textContent = p.name;
@@ -1186,15 +1188,15 @@ async function primeLogDot() {
 }
 
 // ---------------------------------------------------------------- modals
-function openModal(build, { onClose } = {}) {
+function openModal(build, { onClose, kind = '' } = {}) {
   closeModal(true);
   const root = $('#modal-root');
-  const scrim = h('div', { class: 'scrim', onclick: () => closeModal() });
-  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true' });
+  const scrim = h('div', { class: `scrim ${kind}`, onclick: () => closeModal() });
+  const sheet = h('div', { class: `sheet ${kind}`, role: 'dialog', 'aria-modal': 'true' });
   build(sheet);
   root.append(scrim, sheet);
   requestAnimationFrame(() => { scrim.classList.add('show'); sheet.classList.add('show'); });
-  S.modal = { scrim, sheet, onClose };
+  S.modal = { scrim, sheet, onClose, kind };
   setTimeout(() => sheet.querySelector('[autofocus]')?.focus(), 60);
 }
 
@@ -1634,6 +1636,7 @@ function openSettings({ focus } = {}) {
         row('Open at login', 'Works in the packaged app.', rocker(S.settings.launchAtLogin, (v) => save({ launchAtLogin: v }))),
 
         h('div', { class: 'section-title' }, 'Buttons'),
+        row('Button pack', S.look?.license?.pro ? `${S.look.pack?.name || 'Mission Control'}. Ploink Pro is on.` : `${S.look?.pack?.name || 'Mission Control'}. Caps, LED rings, readouts and sounds.`, h('button', { class: 'keycap', onclick: () => { closeModal(true); openLook(); } }, 'Change…')),
         row('Shape', null, seg([['round', 'Round'], ['square', 'Square']], S.settings.buttonShape || 'round', (v) => save({ buttonShape: v }))),
         row('Icon size', 'How much of the button the project icon fills.', h('div', { class: 'row' }, iconSlider, iconVal)),
         row('Names under launch bar buttons', 'Easier to find the right project at a glance.', rocker(S.settings.barLabels, (v) => save({ barLabels: v }))),
@@ -1721,13 +1724,17 @@ window.addEventListener('drop', (e) => {
   dragDepth = 0;
   document.body.classList.remove('dropping');
   const paths = [...(e.dataTransfer?.files || [])].map((f) => api.pathForFile(f)).filter(Boolean);
-  if (paths.length) addFromDrop(paths);
+  const packs = paths.filter((f) => f.endsWith('.ploinkpack'));
+  const folders = paths.filter((f) => !f.endsWith('.ploinkpack'));
+  if (packs.length) installPacks(packs);
+  if (folders.length) addFromDrop(folders);
 });
 
 $('#btn-add').addEventListener('click', addViaPicker);
 $('#btn-log').addEventListener('click', () => { sfx.click(); toggleLog(); });
 $('#lamp-active').addEventListener('click', () => { sfx.click(); toggleLog(); });
 $('#btn-settings').addEventListener('click', () => { sfx.click(); openSettings(); });
+$('#btn-look').addEventListener('click', () => { sfx.click(); openLook(); });
 $('#lamp-agent').addEventListener('click', () => { sfx.click(); openSettings({ focus: 'agents' }); });
 $('#sound-toggle').addEventListener('click', async () => {
   const sound = !S.settings.sound;
@@ -1737,6 +1744,206 @@ $('#sound-toggle').addEventListener('click', async () => {
   updateLamps();
   if (sound) sfx.click();
 });
+
+
+// ---------------------------------------------------------------- look: button packs + Pro
+const LOCK_SVG = '<svg width="9" height="10" viewBox="0 0 12 13"><rect x="1.5" y="5.6" width="9" height="6.6" rx="1.6" fill="currentColor"/><path d="M3.6 5.6V4a2.4 2.4 0 0 1 4.8 0v1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+const FOUNDER = (n) => `FOUNDER #${String(n).padStart(3, '0')}`;
+
+function setLook(look) {
+  if (!look) return;
+  const wasPro = S.look?.license?.pro;
+  S.look = look;
+  if (S.preview && !look.packs.some((p) => p.id === S.preview)) S.preview = null;
+  if (!S.preview) applyPack(look.pack);
+  restyleBays();
+  updateBrand();
+  S.lookSheet?.render();
+  if (wasPro === false && look.license?.pro) celebrateUnlock();
+}
+
+function restyleBays() {
+  for (const bay of S.bays.values()) updateBay(bay);
+  updateLamps();
+}
+
+function updateBrand() {
+  const lic = S.look?.license;
+  const el = $('.brand-model');
+  if (el) el.textContent = lic?.pro ? `DC‑01 PRO · ${lic.founder ? FOUNDER(lic.founder) : 'DEPLOY CONSOLE'}` : 'DC‑01 · DEPLOY CONSOLE';
+  document.body.classList.toggle('is-pro', !!lic?.pro);
+}
+
+// show a pack's success moment on the first bay: LED sweep, effect and sound
+function demoPack() {
+  const bay = S.bays.get((S.order || [])[0]);
+  sfx.success();
+  if (!bay) return;
+  restartClass(bay.el, 'just-success', 2400);
+  const { x, y } = capCenter(bay);
+  fx.celebrate('success', x, y, capColor(bay.project, bay.index));
+}
+
+function startPreview(pack) {
+  S.preview = pack.id;
+  applyPack(pack);
+  restyleBays();
+  demoPack();
+}
+
+function endPreview() {
+  if (!S.preview) return;
+  S.preview = null;
+  applyPack(S.look?.pack);
+  restyleBays();
+}
+
+async function pickPack(pack) {
+  unlockAudio();
+  if (pack.locked) { startPreview(pack); S.lookSheet?.render({ focusKey: true }); return; }
+  S.preview = null;
+  if (S.look.pack?.id !== pack.id) {
+    const res = await api.saveSettings({ pack: pack.id });
+    if (res?.settings) S.settings = res.settings;
+    S.look = { ...S.look, pack };
+    applyPack(pack);
+    restyleBays();
+  }
+  demoPack();
+  S.lookSheet?.render();
+}
+
+async function installPacks(files) {
+  for (const file of files) {
+    const res = await api.installPack(file);
+    if (res?.error) { toast(res.error, 'bad', 6000); sfx.denied(); continue; }
+    setLook(res.look);
+    toast(`Installed the ${res.pack.name} pack${res.warnings?.length ? ` (${res.warnings.length} parts were skipped)` : ''}.`, 'ok', 5000);
+    demoPack();
+  }
+}
+
+function celebrateUnlock() {
+  sfx.install();
+  const bays = (S.order || []).map((id) => S.bays.get(id)).filter(Boolean);
+  bays.forEach((bay, i) => setTimeout(() => {
+    bay.el.style.setProperty('--delay', '0s');
+    restartClass(bay.el, 'mount', 900);
+    setTimeout(() => { const { x, y } = capCenter(bay); fx.confetti(x, y, capColor(bay.project, bay.index), { count: 45 }); }, 320);
+  }, i * 110));
+  setTimeout(() => sfx.success(), 300 + bays.length * 110);
+  const brand = $('.brand-model');
+  if (brand) restartClass(brand, 'engrave', 2600);
+  const lic = S.look?.license || {};
+  toast(lic.founder ? `Ploink Pro is on. Welcome aboard, founder #${lic.founder}.` : 'Ploink Pro is on. Every pack is yours.', 'ok', 6500);
+}
+
+function openLook() {
+  if (S.modal?.kind === 'look') return;
+  let msg = null;
+  let busy = false;
+  let keyValue = '';
+  const body = h('div', { class: 'sheet-body look-body' });
+
+  const activate = async () => {
+    const key = keyValue.trim();
+    if (!key || busy) return;
+    busy = true;
+    msg = { tone: '', text: 'Checking…' };
+    render();
+    const keep = S.preview;
+    const res = await api.activatePro(key);
+    busy = false;
+    if (res?.error) { msg = { tone: 'bad', text: res.error }; sfx.denied(); render({ focusKey: true }); return; }
+    msg = null;
+    keyValue = '';
+    if (keep) {
+      S.preview = null;
+      const saved = await api.saveSettings({ pack: keep });
+      if (saved?.settings) S.settings = saved.settings;
+    }
+    setLook(res.look || (await api.getLook()));
+  };
+
+  function proCard(look) {
+    const lic = look.license || {};
+    const previewing = S.preview ? look.packs.find((p) => p.id === S.preview) : null;
+    if (lic.pro) {
+      const who = lic.founder ? FOUNDER(lic.founder) : 'PLOINK PRO';
+      return h('div', { class: 'pro-card on' },
+        h('span', { class: 'pro-badge' }, 'PRO'),
+        h('div', { class: 'txt' },
+          h('b', {}, who),
+          h('span', {}, `${lic.kind === 'founder' ? 'Founder code' : 'License'} ••••${lic.keyHint}${lic.email ? ` · ${lic.email}` : ''}${lic.test ? ' · test purchase' : ''} · checked ${ago(lic.checkedAt)}`)),
+        h('button', { class: 'keycap', title: 'Remove the key from this Mac', onclick: async () => { const l = await api.deactivatePro(); setLook(l); toast('Pro is off on this Mac. Your key still works on any Mac.', 'info'); } }, 'Sign out'));
+    }
+    if (!look.proBuild) {
+      return h('div', { class: 'pro-card' },
+        h('div', { class: 'txt' }, h('b', {}, 'Pro packs come with the official build'),
+          h('span', {}, 'This copy was built from source, so it has the free packs only. Community packs work everywhere: drop a .ploinkpack file on the window.')),
+        h('button', { class: 'keycap', onclick: () => api.openUrl('https://ploink.dev') }, 'ploink.dev'));
+    }
+    const input = h('input', { class: 'input mono', placeholder: 'License key or founder code', value: keyValue, spellcheck: false, autocomplete: 'off' });
+    input.addEventListener('input', () => { keyValue = input.value; });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') activate(); });
+    const lapsed = lic.status === 'revoked' || lic.status === 'stale';
+    const title = previewing ? `Previewing ${previewing.name}. Unlock Pro to keep it.` : lapsed ? (lic.status === 'stale' ? 'Pro needs a quick online check' : 'Pro is off') : 'Unlock Ploink Pro';
+    const sub = lapsed
+      ? (lic.message || 'Ploink could not check your license for 30 days. Connect to the internet and press Check again.')
+      : 'Paste the license key from your Gumroad receipt, or the founder code from your founder page. Every pack below unlocks, plus everything Pro adds later in 1.x.';
+    return h('div', { class: `pro-card${previewing ? ' glow' : ''}` },
+      h('div', { class: 'txt' }, h('b', {}, title), h('span', {}, sub)),
+      lapsed && lic.status === 'stale'
+        ? h('div', { class: 'row' }, h('button', { class: 'keycap primary', onclick: async () => { setLook(await api.refreshPro()); } }, 'Check again'))
+        : h('div', { class: 'row' }, input, h('button', { class: 'keycap primary', disabled: busy, onclick: activate }, busy ? 'Checking…' : 'Unlock')),
+      msg ? h('div', { class: `pro-msg ${msg.tone}` }, msg.text) : null,
+      h('div', { class: 'pro-links' },
+        h('a', { onclick: () => api.openUrl('https://ploink.dev/#preorder') }, 'Get Pro'),
+        h('a', { onclick: () => api.openUrl('https://ploink.dev/founders/welcome/') }, 'Find my founder code')),
+    );
+  }
+
+  function tile(p, look) {
+    const shown = S.preview || look.pack?.id;
+    const tag = p.source === 'community' ? 'community' : p.tier === 'pro' ? 'pro' : 'free';
+    const sample = S.projects[0] ? (S.projects[0].color || colorFromName(S.projects[0].name)) : '#e5484d';
+    const leds = Array.from({ length: 12 }, (_, i) => h('i', { vars: { '--i': i } }));
+    return h('button', {
+      class: `pack-tile${shown === p.id ? ' shown' : ''}${look.pack?.id === p.id ? ' chosen' : ''}${p.locked ? ' locked' : ''} led-${p.led?.style || 'dots'}`,
+      vars: previewVars(p, sample),
+      title: p.description || p.name,
+      onclick: () => pickPack(p),
+    },
+      h('span', { class: 'pv' }, h('span', { class: 'pv-ring' }, leds), h('span', { class: 'pv-cap' }), h('span', { class: 'pv-lcd' }, p.words?.SHIPPED || 'SHIPPED')),
+      h('span', { class: 'pt-name' }, p.name),
+      h('span', { class: `pt-tag tag-${tag}` }, p.locked ? h('span', { class: 'lock', html: LOCK_SVG }) : null, tag.toUpperCase()),
+      look.pack?.id === p.id ? h('span', { class: 'pt-on' }, 'ON') : null,
+      p.source === 'community' ? h('span', { class: 'pt-x', title: 'Remove this pack', onclick: async (e) => { e.stopPropagation(); const r = await api.removePack(p.id); setLook(r.look); } }, '×') : null,
+    );
+  }
+
+  function render({ focusKey = false } = {}) {
+    const look = S.look;
+    if (!look) return;
+    const order = { free: 0, pro: 1, community: 2 };
+    const packs = [...look.packs].sort((a, b) => (order[a.source === 'community' ? 'community' : a.tier] - order[b.source === 'community' ? 'community' : b.tier]));
+    body.replaceChildren(
+      proCard(look),
+      h('div', { class: 'pack-grid' }, packs.map((p) => tile(p, look))),
+      h('p', { class: 'field-hint' }, 'Click a pack to try it on your bays. Packs only change looks and sounds; your deploys work the same. Drop a .ploinkpack file on the window to add a community pack.'),
+    );
+    if (focusKey) body.querySelector('.pro-card input')?.focus();
+  }
+
+  openModal((sheet) => {
+    sheet.append(
+      h('div', { class: 'sheet-head' }, h('h2', {}, 'Button packs'), h('div', { class: 'grow' }), h('button', { class: 'keycap small', onclick: () => closeModal(), title: 'Close' }, ICON.x())),
+      body,
+    );
+  }, { kind: 'look', onClose: () => { S.lookSheet = null; endPreview(); } });
+  S.lookSheet = { render };
+  render();
+}
 
 // ---------------------------------------------------------------- events from main
 api.on((evt) => {
@@ -1753,6 +1960,7 @@ api.on((evt) => {
     case 'mcp': S.mcp = evt.mcp; updateLamps(); break;
     case 'project-added': setTimeout(() => celebrateInstall(evt.id), 150); break;
     case 'open-settings': openSettings({ focus: evt.focus }); break;
+    case 'look': setLook(evt.look); break;
     case 'usage': S.usage = evt.usage; renderUsageLamps(); break;
     case 'add-project': if (!S.modal) addViaPicker(); break;
     case 'open-run': {
@@ -1790,6 +1998,9 @@ setInterval(() => { for (const bay of S.bays.values()) updateLcd(bay); if (S.dra
 
 const state = await api.getState();
 Object.assign(S, { projects: state.projects, settings: state.settings, latest: state.latest || {}, actions: state.actions || {}, mcp: state.mcp || {}, shortcut: state.shortcut || {}, appPath: state.appPath || '', version: state.version });
+S.look = state.look || null;
+applyPack(S.look?.pack);
+updateBrand();
 configureAudio(S.settings);
 applyLook();
 buildDrawer();

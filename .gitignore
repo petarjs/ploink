@@ -6,3 +6,6 @@ dist/
 # private: landing page (has seller address, pricing, sales copy) and business notes
 site/
 notes/
+
+# private Pro module, copied in by scripts/release.mjs (never commit it to the public repo)
+pro/

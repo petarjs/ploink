@@ -136,6 +136,18 @@ function simulate(run, fail) {
 
 let failNext = new Set(['p3']);
 
+// ---- button packs + Pro (the preview server serves the real pack files at /__packs.json)
+// ?pack=<id> picks a pack, ?pro=1 starts unlocked, ?founder=<n> sets the founder number.
+const qs = new URLSearchParams(location.search);
+const packData = await fetch('/__packs.json').then((r) => r.json()).catch(() => ({ packs: [], proBuild: false }));
+if (qs.get('pack')) settings.pack = qs.get('pack');
+let license = qs.get('pro') ? { pro: true, status: 'active', kind: 'founder', founder: Number(qs.get('founder')) || 1, keyHint: 'PQR2', email: 'f••••••@example.com', checkedAt: Date.now() - 2 * 3600e3 } : { pro: false, status: 'none' };
+function lookState() {
+  const packs = packData.packs.map((p) => ({ ...p, locked: p.tier === 'pro' && !license.pro }));
+  const pack = packs.find((p) => p.id === settings.pack && !p.locked) || packs.find((p) => p.id === 'dev.ploink.mission-control') || null;
+  return { pack, packs, license, proBuild: packData.proBuild, proVersion: packData.proVersion || '' };
+}
+
 export const mockBridge = {
   isMock: true,
   async getState() {
@@ -145,7 +157,7 @@ export const mockBridge = {
       l[p.id] = summary(latest(p.id));
       for (const a of p.actions || []) { const r = latest(p.id, a.id); if (r) (acts[p.id] ||= {})[a.id] = summary(r); }
     }
-    return { projects: structuredClone(projects), settings: structuredClone(settings), latest: l, actions: acts, mcp: { running: true, port: 47321, url: 'http://127.0.0.1:47321/mcp' }, shortcut: { ok: true }, platform: 'darwin', appPath: '/Applications/Ploink.app/Contents/Resources/app', version: '0.1.0' };
+    return { projects: structuredClone(projects), settings: structuredClone(settings), latest: l, actions: acts, mcp: { running: true, port: 47321, url: 'http://127.0.0.1:47321/mcp' }, shortcut: { ok: true }, platform: 'darwin', appPath: '/Applications/Ploink.app/Contents/Resources/app', version: '0.2.0', look: lookState() };
   },
   async saveProject(input) {
     let p = projects.find((x) => x.id === input.id);
@@ -214,7 +226,19 @@ export const mockBridge = {
   async disconnectClaude() { return { ok: true }; },
   async getActivity(limit = 400) { return activity.slice(0, limit); },
   async getHistory(pid) { return [...runs.values()].filter((r) => r.projectId === pid).sort((a, b) => b.createdAt - a.createdAt).map(summary); },
-  async saveSettings(patch) { settings = { ...settings, ...patch, bar: { ...settings.bar, ...(patch.bar || {}) } }; return { settings, shortcut: { ok: true }, mcp: { running: settings.mcpEnabled, port: settings.mcpPort, url: `http://127.0.0.1:${settings.mcpPort}/mcp` } }; },
+  async getLook() { return lookState(); },
+  async activatePro(key) {
+    await new Promise((r) => setTimeout(r, 700));
+    if (!/^[A-Z0-9-]{16,}$/i.test(String(key).replace(/\s/g, ''))) return { error: 'That is not a license key or a founder code. License keys look like XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX. Founder codes have 16 letters and digits.', look: lookState() };
+    license = { pro: true, status: 'active', kind: key.includes('-') && key.length > 30 ? 'gumroad' : 'founder', founder: 1, keyHint: String(key).slice(-4).toUpperCase(), email: 'f••••••@example.com', checkedAt: Date.now() };
+    emit('look', { look: lookState() });
+    return { ok: true, license, look: lookState() };
+  },
+  async deactivatePro() { license = { pro: false, status: 'none' }; emit('look', { look: lookState() }); return lookState(); },
+  async refreshPro() { return lookState(); },
+  async installPack() { return { error: 'Installing packs needs the app; the browser preview can only show the built-in ones.' }; },
+  async removePack() { return { ok: false, look: lookState() }; },
+  async saveSettings(patch) { settings = { ...settings, ...patch, bar: { ...settings.bar, ...(patch.bar || {}) } }; if (patch.pack !== undefined) setTimeout(() => emit('look', { look: lookState() })); return { settings, shortcut: { ok: true }, mcp: { running: settings.mcpEnabled, port: settings.mcpPort, url: `http://127.0.0.1:${settings.mcpPort}/mcp` } }; },
   async hide() {},
   async copy(t) { try { await navigator.clipboard.writeText(t); } catch { /* ignore */ } return true; },
   async reveal() { return true; },
