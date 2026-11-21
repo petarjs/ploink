@@ -1,6 +1,7 @@
 import { h, capVars, colorFromIcon, colorFromName, monogram, ansiToHtml, ago, clock, dur, hostOf, CAP_COLORS, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
+import { commandSteps, commandSummary, commandDisplay } from './steps.js';
 import { applyPack, capColor, capShape, packOutline, readoutStyle, logStyle, quip, scramble, glyphText, specimenSvg, specimenName, word, previewVars } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
@@ -42,6 +43,13 @@ function trustChip(onTrust) {
 }
 
 // ---------------------------------------------------------------- helpers
+// grow a textarea with its content, up to about 8 lines, then scroll
+function growArea(ta) {
+  ta.style.height = 'auto';
+  const max = parseFloat(getComputedStyle(ta).lineHeight || '18') * 8 + 20;
+  ta.style.height = `${Math.min(ta.scrollHeight + 2, max)}px`;
+}
+
 const activeCmd = (p) => p.commands.find((c) => c.id === p.activeCommandId) || p.commands[0] || null;
 const prettyPath = (p) => String(p || '').replace(/^\/Users\/[^/]+/, '~');
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -303,12 +311,12 @@ function updateSelector(bay) {
     if (p.commands.length <= 1) {
       const c = p.commands[0];
       sel.className = 'selector single';
-      sel.replaceChildren(h('span', { class: 'sel-opt', title: c ? c.cmd : '' }, c ? `$ ${c.cmd}` : 'no deploy command'));
+      sel.replaceChildren(h('span', { class: 'sel-opt', title: c ? c.cmd : '' }, c ? `$ ${commandSummary(c.cmd)}` : 'no deploy command'));
     } else {
       sel.className = 'selector';
       sel.replaceChildren(
         h('span', { class: 'selector-thumb' }),
-        ...p.commands.slice(0, 4).map((c) => h('button', { class: 'sel-opt', title: c.cmd, 'data-cmd': c.id, onclick: () => selectCommand(bay, c.id) }, c.label)),
+        ...p.commands.slice(0, 4).map((c) => h('button', { class: 'sel-opt', title: commandDisplay(c.cmd), 'data-cmd': c.id, onclick: () => selectCommand(bay, c.id) }, c.label)),
       );
     }
   }
@@ -576,7 +584,7 @@ function openReview(project, button, { commandId, actionId }, after) {
 function lcdFor(p, run) {
   const cmd = activeCmd(p);
   if (!cmd) return { tone: 'off', status: 'NO COMMAND', side: '', ticker: 'right-click to set one up' };
-  const base = `${cmd.label} · ${cmd.cmd}`;
+  const base = `${cmd.label} · ${commandSummary(cmd.cmd)}`;
   if (!run) return { tone: '', status: 'READY', side: '—', ticker: base };
   const agent = run.source === 'agent';
   const badge = agent ? 'AGENT' : run.source === 'tray' ? 'MENU' : null;
@@ -1381,12 +1389,21 @@ function openEditor(project) {
 
     const cmdList = h('div', { class: 'cmd-list' });
     const renderCmds = () => {
-      cmdList.replaceChildren(...draft.commands.map((c, i) => h('div', { class: 'cmd-row' },
-        h('input', { class: 'input mono', value: c.label, placeholder: 'label', maxLength: 24, oninput: (e) => { c.label = e.target.value; } }),
-        h('input', { class: 'input mono', value: c.cmd, placeholder: 'npm run deploy', oninput: (e) => { c.cmd = e.target.value; c.trusted = true; } }),
-        h('button', { class: 'x', title: 'Remove command', onclick: () => { draft.commands.splice(i, 1); renderCmds(); } }, ICON.x()),
-        c.trusted === false ? trustChip(() => { c.trusted = true; renderCmds(); }) : null,
-      )));
+      cmdList.replaceChildren(...draft.commands.map((c, i) => {
+        const steps = h('span', { class: 'cmd-steps' });
+        const count = () => { const n = commandSteps(c.cmd).length; steps.textContent = n > 1 ? `${n} steps` : ''; };
+        const text = h('textarea', { class: 'input mono cmd-text', rows: 1, value: c.cmd, placeholder: 'npm run deploy', spellcheck: false, autocapitalize: 'off', 'aria-label': 'Shell command, one step per line',
+          oninput: (e) => { c.cmd = e.target.value; c.trusted = true; growArea(e.target); count(); } });
+        count();
+        return h('div', { class: 'cmd-row' },
+          h('input', { class: 'input mono cmd-label', value: c.label, placeholder: 'label', maxLength: 24, oninput: (e) => { c.label = e.target.value; } }),
+          steps,
+          h('button', { class: 'x', title: 'Remove command', onclick: () => { draft.commands.splice(i, 1); renderCmds(); } }, ICON.x()),
+          text,
+          c.trusted === false ? trustChip(() => { c.trusted = true; renderCmds(); }) : null,
+        );
+      }));
+      requestAnimationFrame(() => cmdList.querySelectorAll('textarea').forEach(growArea));
     };
     renderCmds();
 
@@ -1466,7 +1483,7 @@ function openEditor(project) {
       if (isNew && saved?.id) setTimeout(() => celebrateInstall(saved.id), 120);
     };
 
-    const hints = project._hints?.length ? `Found: ${project._hints.join(', ')}.` : 'Each command runs in your login shell, inside the project folder.';
+    const hints = project._hints?.length ? `Found: ${project._hints.join(', ')}. ` : '';
 
     sheet.append(
       h('div', { class: 'sheet-head' }, h('h2', {}, isNew ? 'Install bay' : 'Bay settings'), h('div', { class: 'grow' }), h('button', { class: 'keycap small', onclick: () => closeModal(), title: 'Close' }, ICON.x())),
@@ -1493,7 +1510,7 @@ function openEditor(project) {
           h('div', { class: 'field-label' }, 'Deploy commands', h('span', {}, 'label · shell command')),
           cmdList,
           h('button', { class: 'add-cmd', onclick: () => { draft.commands.push({ label: '', cmd: '' }); renderCmds(); cmdList.lastChild?.querySelector('input')?.focus(); } }, '+ add command'),
-          h('div', { class: 'field-hint' }, hints, ' Two or more commands get a selector switch on the bay.'),
+          h('div', { class: 'field-hint' }, hints, 'One step per line. Steps run in order in your login shell, inside the project folder, and stop at the first one that fails. Lines starting with # are comments. Two or more commands get a selector switch on the bay.'),
         ),
         h('div', { class: 'field' },
           h('div', { class: 'field-label' }, 'Action keys', h('span', {}, 'small keys under the button')),

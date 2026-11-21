@@ -708,7 +708,16 @@ body.dropping .drop-veil { opacity: 1; }
 .swatch.active { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 3px 0 color-mix(in srgb, var(--c) 45%, black), 0 0 0 2px #1d1e22, 0 0 0 4px var(--ink); }
 
 .cmd-list { display: flex; flex-direction: column; gap: 8px; }
-.cmd-row { display: grid; grid-template-columns: 110px 1fr 30px; gap: 8px; align-items: center; animation: rowIn 0.35s var(--spring); }
+.cmd-row { display: grid; grid-template-columns: 140px 1fr 30px; gap: 6px 8px; align-items: center; animation: rowIn 0.35s var(--spring); }
+.cmd-row .cmd-label { height: 30px; }
+.cmd-row .cmd-steps { font: 600 9.5px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+/* the shell command: full width, one step per line, grows up to about 8 lines then scrolls */
+.cmd-row .cmd-text {
+  grid-column: 1 / -1; display: block; height: 38px; min-height: 38px; padding: 9px 12px;
+  font: 12px/18px var(--mono); resize: none; overflow-y: auto;
+  white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2;
+}
+.cmd-list .cmd-row + .cmd-row { padding-top: 10px; border-top: 1px solid var(--line); }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-6px); } }
 .cmd-row .x { width: 30px; height: 30px; border-radius: 8px; color: var(--muted); display: grid; place-items: center; }
 .cmd-row .x:hover { color: var(--bad); background: rgba(255, 91, 82, 0.1); }

@@ -7,6 +7,7 @@ import { Store } from '../main/store.mjs';
 import { Runner } from '../main/runner.mjs';
 import { resolveProject } from '../main/mcp.mjs';
 import { detectProject } from '../main/detect.mjs';
+import { commandSteps, commandScript, commandDisplay, commandSummary } from '../renderer/steps.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ploink-test-'));
 const proj = path.join(tmp, 'site');
@@ -89,4 +90,74 @@ test('projects resolve by name, id, or a path inside the folder', () => {
   assert.equal(resolveProject(store, project.id)?.id, project.id);
   assert.equal(resolveProject(store, path.join(proj, 'public'))?.id, project.id);
   assert.equal(resolveProject(store, '/somewhere/else'), null);
+});
+
+test('command steps: blank lines, comments and continuations', () => {
+  assert.deepEqual(commandSteps('git pull\n\nnpm ci\n# build first\nnpm run build \\\n  --prod\nnpm run deploy'), ['git pull', 'npm ci', 'npm run build   --prod', 'npm run deploy']);
+  assert.deepEqual(commandSteps('a\r\nb'), ['a', 'b'], 'Windows line endings');
+  assert.deepEqual(commandSteps('# a note \\\necho hi'), ['echo hi'], 'a comment never continues');
+  assert.deepEqual(commandSteps('echo a\\\\\necho b'), ['echo a\\\\', 'echo b'], 'an escaped backslash is not a continuation');
+  assert.deepEqual(commandSteps('echo end \\'), ['echo end'], 'a backslash on the last line');
+  assert.deepEqual(commandSteps('   \n\n'), []);
+});
+
+test('a one-step command runs exactly as typed, && and all', () => {
+  const one = 'git pull && npm ci && npm run deploy';
+  assert.equal(commandScript(one), one);
+  assert.equal(commandDisplay(one), one);
+  assert.equal(commandSummary(one), one);
+  assert.equal(commandScript('  npm run deploy  '), 'npm run deploy');
+  assert.equal(commandScript('# deploy to prod\nnpm run deploy'), 'npm run deploy', 'comments around a single step');
+});
+
+test('several steps are grouped and joined with &&, and shown as one line or "first +N"', () => {
+  const text = 'npm test # quick\nnpm run deploy';
+  assert.equal(commandScript(text), '{ npm test # quick\n} && { npm run deploy\n}');
+  assert.equal(commandDisplay(text), 'npm test # quick && npm run deploy');
+  assert.equal(commandSummary(text), 'npm test # quick +1');
+});
+
+test('a multi-step deploy stops at the first failing step', async () => {
+  const marker = path.join(tmp, 'third-step-ran');
+  const { runner, project } = setup(`echo first\n# a comment\nexit 3\necho third > "${marker}"`);
+  const { run } = runner.request({ project });
+  const done = await runner.waitFor(run.id, 10000);
+  assert.equal(done.status, 'failed');
+  assert.equal(done.exitCode, 3);
+  assert.ok(done.log.includes('first'));
+  assert.equal(fs.existsSync(marker), false, 'the step after the failure never ran');
+  assert.equal(done.cmd, `echo first && exit 3 && echo third > "${marker}"`, 'logs and agents see the joined command');
+});
+
+test('a multi-step deploy with a trailing comment and a continuation runs every step', async () => {
+  const { runner, project } = setup('echo one # says one\necho two \\\n  and more\n\necho three');
+  const { run } = runner.request({ project });
+  const done = await runner.waitFor(run.id, 10000);
+  assert.equal(done.status, 'success');
+  for (const line of ['one', 'two and more', 'three']) assert.ok(done.log.includes(line), line);
+});
+
+test('agents see the joined command in list_projects', async () => {
+  const { store } = setup('git pull\nnpm run deploy');
+  store.updateSettings({ mcpAuth: 'off' });
+  const { createMcp } = await import('../main/mcp.mjs');
+  const mcp = createMcp({ store, runner: new Runner(store), getUsage: () => ({}), onAddProject: () => {}, onAgentActivity: () => {}, onUnauthorized: () => {} });
+  const port = 47600 + Math.floor(Math.random() * 300);
+  const state = await mcp.start(port);
+  assert.equal(state.running, true, state.error);
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/mcp`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_projects', arguments: {} } }),
+    });
+    const body = await res.json();
+    const data = JSON.parse(body.result.content[0].text);
+    const projects = Array.isArray(data) ? data : data.projects;
+    const cmd = projects.flatMap((p) => p.commands).find((c) => c.steps);
+    assert.equal(cmd.command, 'git pull && npm run deploy');
+    assert.deepEqual(cmd.steps, ['git pull', 'npm run deploy']);
+  } finally {
+    mcp.stop();
+  }
 });

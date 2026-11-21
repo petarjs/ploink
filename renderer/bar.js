@@ -2,6 +2,7 @@
 import { h, capVars, colorFromName, monogram, ago, clock, dur, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
+import { commandSummary } from './steps.js';
 import { applyPack, capColor, capShape, packOutline, readoutStyle, glyphText, word } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
@@ -363,15 +364,15 @@ bubble.addEventListener('pointerleave', () => { if (!plate.matches(':hover')) se
 function statusFor(p, run) {
   const cmd = p.commands.find((c) => c.id === p.activeCommandId) || p.commands[0];
   if (!cmd) return { tone: '', vfd: 'NO COMMAND', side: '', line: 'right-click › Edit bay' };
-  if (!run) return { tone: '', vfd: 'READY', side: cmd.label.toUpperCase(), line: `$ ${cmd.cmd}` };
+  if (!run) return { tone: '', vfd: 'READY', side: cmd.label.toUpperCase(), line: `$ ${commandSummary(cmd.cmd)}` };
   switch (run.status) {
     case 'awaiting_approval': return { tone: 'warn', vfd: 'AGENT REQUEST', side: 'HOLD = OK', line: run.reason ? `“${run.reason}”` : `wants to run ${run.commandLabel}` };
     case 'starting': return { tone: '', vfd: 'IGNITION', side: '00:00', line: run.cmd };
     case 'running': return { tone: '', vfd: 'IN FLIGHT', side: clock(Date.now() - run.startedAt), line: run.lastLine || run.cmd };
     case 'success': return { tone: 'ok', vfd: 'SHIPPED', side: ago(run.endedAt).toUpperCase(), line: `${run.commandLabel} · took ${dur(run.endedAt - run.startedAt)}` };
     case 'failed': return { tone: 'bad', vfd: `FAILED · EXIT ${run.exitCode ?? '?'}`, side: ago(run.endedAt).toUpperCase(), line: run.lastLine || 'open the log' };
-    case 'cancelled': return { tone: 'warn', vfd: 'ABORTED', side: ago(run.endedAt).toUpperCase(), line: `$ ${cmd.cmd}` };
-    default: return { tone: '', vfd: 'READY', side: cmd.label.toUpperCase(), line: `$ ${cmd.cmd}` };
+    case 'cancelled': return { tone: 'warn', vfd: 'ABORTED', side: ago(run.endedAt).toUpperCase(), line: `$ ${commandSummary(cmd.cmd)}` };
+    default: return { tone: '', vfd: 'READY', side: cmd.label.toUpperCase(), line: `$ ${commandSummary(cmd.cmd)}` };
   }
 }
 

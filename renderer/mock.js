@@ -1,3 +1,4 @@
+import { commandDisplay } from './steps.js';
 // In-browser stand-in for the Electron bridge, so the UI can be previewed and
 // designed without the app. Deploys are simulated. window.__mock drives agent events.
 const svg = (body, bg = 'none') =>
@@ -14,7 +15,7 @@ const ICONS = {
 const now = Date.now();
 const HEALTH = `curl -fsSL -o /dev/null --max-time 15 -w '%{http_code} · %{time_total}s' "$PLOINK_URL"`;
 const projects = [
-  { id: 'p1', name: 'Pixel Forge', cwd: '/Users/you/code/pixel-forge', url: 'https://pixelforge.example', icon: ICONS.forge, color: '#f76b15', commands: [{ id: 'c1', label: 'prod', cmd: 'npm run deploy' }, { id: 'c2', label: 'preview', cmd: 'npm run deploy:preview' }], activeCommandId: 'c1', actions: [{ id: 'x1', label: 'health', kind: 'check', cmd: HEALTH, agents: true, afterDeploy: true }, { id: 'x2', label: 'dev', kind: 'service', cmd: 'npm run dev' }, { id: 'x3', label: 'pull', kind: 'oneshot', cmd: 'git pull --ff-only', agents: true }] },
+  { id: 'p1', name: 'Pixel Forge', cwd: '/Users/you/code/pixel-forge', url: 'https://pixelforge.example', icon: ICONS.forge, color: '#f76b15', commands: [{ id: 'c1', label: 'prod', cmd: 'git pull --ff-only\nnpm ci\n# build, then ship what is on disk\nnpm run build\nnpm run deploy -- --prod \\\n  --message "from Ploink"' }, { id: 'c2', label: 'preview', cmd: 'npm run deploy:preview' }], activeCommandId: 'c1', actions: [{ id: 'x1', label: 'health', kind: 'check', cmd: HEALTH, agents: true, afterDeploy: true }, { id: 'x2', label: 'dev', kind: 'service', cmd: 'npm run dev' }, { id: 'x3', label: 'pull', kind: 'oneshot', cmd: 'git pull --ff-only', agents: true }] },
   { id: 'p2', name: 'Inkwell Blog', cwd: '/Users/you/code/inkwell', url: 'https://inkwell.example', icon: ICONS.ink, color: '#1e93f0', commands: [{ id: 'c3', label: 'deploy', cmd: 'pnpm run deploy' }], activeCommandId: 'c3', actions: [{ id: 'x4', label: 'test', kind: 'oneshot', cmd: 'pnpm test', agents: true }, { id: 'x5', label: 'ssl days', kind: 'check', cmd: 'echo "34 days"' }] },
   { id: 'p3', name: 'Tidepool API', cwd: '/Users/you/code/tidepool', url: 'https://api.tidepool.example', icon: ICONS.tide, color: '#13a596', commands: [{ id: 'c4', label: 'fly', cmd: 'fly deploy' }], activeCommandId: 'c4', actions: [{ id: 'x6', label: 'health', kind: 'check', cmd: HEALTH, agents: true }, { id: 'x7', label: 'migrate', kind: 'oneshot', cmd: 'fly ssh console -C "npm run migrate"', hold: true }] },
   { id: 'p4', name: 'Bakery Orders', cwd: '/Users/you/code/bakery', url: 'https://orders.bakery.example', icon: ICONS.donut, color: '#d6409f', commands: [{ id: 'c5', label: 'prod', cmd: 'vercel deploy --prod' }, { id: 'c6', label: 'preview', cmd: 'vercel deploy' }], activeCommandId: 'c5', requireApproval: true, actions: [{ id: 'x8', label: 'seed', kind: 'oneshot', cmd: 'npm run db:seed', trusted: false, agents: true }] },
@@ -29,7 +30,7 @@ const emit = (type, payload) => listeners.forEach((fn) => fn({ type, ...payload 
 let rid = 0;
 
 function mkRun(project, cmd, status, extra = {}) {
-  return { id: 'r' + ++rid, projectId: project.id, projectName: project.name, commandId: cmd.id, commandLabel: cmd.label, cmd: cmd.cmd, cwd: project.cwd, source: 'user', reason: '', status, createdAt: Date.now(), startedAt: null, endedAt: null, exitCode: null, log: [], ...extra };
+  return { id: 'r' + ++rid, projectId: project.id, projectName: project.name, commandId: cmd.id, commandLabel: cmd.label, cmd: commandDisplay(cmd.cmd), cwd: project.cwd, source: 'user', reason: '', status, createdAt: Date.now(), startedAt: null, endedAt: null, exitCode: null, log: [], ...extra };
 }
 // seed history
 runs.set('h1', { ...mkRun(projects[0], projects[0].commands[0], 'success'), id: 'h1', createdAt: now - 3 * 3600e3, startedAt: now - 3 * 3600e3, endedAt: now - 3 * 3600e3 + 48e3, exitCode: 0, log: ['\x1b[2m$ npm run deploy\x1b[0m', '\x1b[32m✓\x1b[0m Deployed'] });

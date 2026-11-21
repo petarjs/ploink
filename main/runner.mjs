@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import { loadShellEnv, userShell } from './shellenv.mjs';
 import { uid } from './store.mjs';
+import { commandSteps, commandScript, commandDisplay } from '../renderer/steps.js';
 
 const MAX_LOG_LINES = 6000;
 const HISTORY_LOG_LINES = 400;
@@ -132,11 +133,13 @@ export class Runner extends EventEmitter {
       commandLabel: button.label,
       actionId: action ? action.id : null,
       kind: action ? action.kind : 'deploy',
-      cmd: button.cmd,
+      cmd: commandDisplay(button.cmd), // one line, for logs, readouts and agents
+      script: commandScript(button.cmd), // what the shell runs: one step as typed, or steps joined with &&
+      stepList: commandSteps(button.cmd),
       cwd: project.cwd,
       siteUrl: project.url || '',
       parse: action?.parse || '',
-      verifyAction: verify ? { label: verify.label, cmd: verify.cmd, parse: verify.parse } : null,
+      verifyAction: verify ? { label: verify.label, cmd: commandScript(verify.cmd), parse: verify.parse } : null,
       untrusted: button.trusted === false,
       source,
       client: String(client || '').slice(0, 40),
@@ -232,13 +235,16 @@ export class Runner extends EventEmitter {
     if (run.cancelRequested) return this.finish(run, 'cancelled', null, 'Cancelled before it started.');
     run.status = 'running';
     run.startedAt = Date.now();
-    this.pushLines(run, [`\x1b[2m$ ${run.cmd}\x1b[0m`, `\x1b[2m  in ${run.cwd}\x1b[0m`, '']);
+    // a multi-step command lists its steps; a one-step command shows the line it runs
+    const steps = run.stepList?.length > 1 ? run.stepList.map((s, i) => `\x1b[2m${i + 1}. ${s}\x1b[0m`) : [`\x1b[2m$ ${run.cmd}\x1b[0m`];
+    if (run.stepList?.length > 1) steps.push('\x1b[2m   (each step runs only if the one before it succeeded)\x1b[0m');
+    this.pushLines(run, [...steps, `\x1b[2m  in ${run.cwd}\x1b[0m`, '']);
     run.outStart = run.log.length;
     this.emitUpdate(run);
 
     let child;
     try {
-      child = this.startChild(run, run.cmd, env);
+      child = this.startChild(run, run.script || run.cmd, env);
     } catch (err) {
       return this.finish(run, 'failed', null, `Could not start: ${err.message}`);
     }

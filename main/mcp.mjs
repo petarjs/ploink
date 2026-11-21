@@ -3,6 +3,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import { stripAnsi, TERMINAL } from './runner.mjs';
+import { commandSteps, commandDisplay } from '../renderer/steps.js';
 
 const SUPPORTED_VERSIONS = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
 const LATEST = SUPPORTED_VERSIONS[SUPPORTED_VERSIONS.length - 1];
@@ -270,7 +271,7 @@ export function createMcp({ store, runner, onAddProject, onAgentActivity, getUsa
             id: a.id,
             label: a.label,
             kind: a.kind,
-            command: a.cmd,
+            command: commandDisplay(a.cmd),
             needs_approval: a.hold || a.trusted === false || store.settings.agentApproval === 'ask',
             latest: r ? { run_id: r.id, status: r.status, value: r.value || undefined, url: r.url || undefined } : null,
           };
@@ -281,7 +282,10 @@ export function createMcp({ store, runner, onAddProject, onAgentActivity, getUsa
           bank: p.bank || undefined,
           path: p.cwd,
           url: p.url || undefined,
-          commands: p.commands.map((c) => ({ id: c.id, label: c.label, command: c.cmd, selected: c.id === p.activeCommandId, needs_first_approval: c.trusted === false || undefined })),
+          commands: p.commands.map((c) => {
+            const steps = commandSteps(c.cmd);
+            return { id: c.id, label: c.label, command: commandDisplay(c.cmd), steps: steps.length > 1 ? steps : undefined, selected: c.id === p.activeCommandId, needs_first_approval: c.trusted === false || undefined };
+          }),
           actions: actions.length ? actions : undefined,
           needs_approval_for_agents: p.requireApproval || store.settings.agentApproval === 'ask',
           latest_deploy: last ? { run_id: last.id, status: last.status, command: last.commandLabel, finished_at: last.endedAt ? new Date(last.endedAt).toISOString() : null } : null,
