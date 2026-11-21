@@ -371,9 +371,9 @@ html[data-surface='light'] .chassis::before, html[data-surface='light'] .bay::be
 html[data-surface='light'] .topbar { box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 18px -12px rgba(0, 0, 0, 0.25); }
 html[data-surface='light'] .strip { box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.08); }
 html[data-surface='light'] .bay { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.1), 0 14px 26px -16px rgba(0, 0, 0, 0.35); }
-html[data-surface='light'] .keycap { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.08), 0 2px 0 var(--key-edge, #b8b8b8), 0 3px 6px rgba(0, 0, 0, 0.12); }
+html[data-surface='light'] :is(.topbar, .flightlog) .keycap { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.08), 0 2px 0 var(--key-edge, #b8b8b8), 0 3px 6px rgba(0, 0, 0, 0.12); }
 html[data-surface='light'] .key { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 0 rgba(0, 0, 0, 0.18), 0 2px 3px rgba(0, 0, 0, 0.08); }
-html[data-surface='light'] :is(.lamp, .selector, .rocker-track, .lcd, .log-filter) { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(0, 0, 0, 0.06); }
+html[data-surface='light'] :is(.lamp, .selector, .topbar .rocker-track, .lcd, .log-filter) { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(0, 0, 0, 0.06); }
 html[data-surface='light'] .selector-thumb { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.8); }
 html[data-surface='light'] .socket-hole { box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.22), 0 0 0 9px var(--socket-ring, #e6e6e6), 0 0 0 10px rgba(0, 0, 0, 0.08); }
 html[data-surface='light'] .bezel::before { box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.12); }
@@ -753,11 +753,12 @@ html[data-log='worksheet'] .entry.bad { background: #ffc7ce !important; }
 html[data-log='worksheet'] .entry.bad .what, html[data-log='worksheet'] .entry.bad .mark { color: #9c0006; }
 html[data-log='worksheet'] .paper { display: flex; flex-direction: column; }
 html[data-log='worksheet'] .paper > * { flex: none; }
-.sheet-foot { position: sticky; bottom: -4px; z-index: 2; margin: auto 0 -4px; padding-top: 0; background: #f3f3f3; border-top: 1px solid #c8c8c8; font: 500 10.5px/1 var(--sans); color: #333; }
-.sheet-tabs { display: flex; gap: 2px; padding: 0 8px; }
-.sheet-tabs button { padding: 5px 10px; font: 600 10.5px/1 var(--sans); color: #444; background: #e6e6e6; border-radius: 0 0 4px 4px; }
-.sheet-tabs button.active { background: #fff; color: #1e7a4a; box-shadow: inset 0 -2px 0 #1e7a4a; }
-.sheet-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; padding: 6px 10px; border-top: 1px solid #d4d4d4; color: #444; white-space: nowrap; }
+/* the worksheet's own footer (ws-*): never reuse .sheet-foot, that is every modal's action row */
+.flightlog .ws-foot { position: sticky; bottom: -4px; z-index: 2; margin: auto 0 -4px; padding-top: 0; background: #f3f3f3; border-top: 1px solid #c8c8c8; font: 500 10.5px/1 var(--sans); color: #333; }
+.flightlog .ws-tabs { display: flex; gap: 2px; padding: 0 8px; }
+.flightlog .ws-tabs button { padding: 5px 10px; font: 600 10.5px/1 var(--sans); color: #444; background: #e6e6e6; border-radius: 0 0 4px 4px; }
+.flightlog .ws-tabs button.active { background: #fff; color: #1e7a4a; box-shadow: inset 0 -2px 0 #1e7a4a; }
+.flightlog .ws-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; padding: 6px 10px; border-top: 1px solid #d4d4d4; color: #444; white-space: nowrap; }
 html[data-log='worksheet'] .log-filter { display: none; }
 
 /* frosted: a frosted pane that blurs the bays behind it */
@@ -1024,7 +1025,7 @@ html.glitching :is(.chassis, .plate) { animation: glitchTear 0.34s steps(2) both
 /* flat caps bring their neobrutalist bays and keys along */
 html[data-cap='flat'] .bay { border-radius: 14px; box-shadow: 0 0 0 3px #000, 8px 8px 0 #000; transform: none !important; }
 html[data-cap='flat'] .bay::before { display: none; }
-html[data-cap='flat'] :is(.keycap, .key) { box-shadow: 0 0 0 2px #000, 3px 3px 0 #000; }
+html[data-cap='flat'] :is(.topbar .keycap, .key) { box-shadow: 0 0 0 2px #000, 3px 3px 0 #000; }
 html[data-cap='flat'] :is(.lcd, .selector) { box-shadow: 0 0 0 2px #000; }
 html[data-cap='flat'] .plate { box-shadow: 0 0 0 3px #000, 6px 6px 0 #000; }
 
@@ -1032,3 +1033,29 @@ html[data-cap='flat'] .plate { box-shadow: 0 0 0 3px #000, 6px 6px 0 #000; }
 :where(html[data-surface='light']) .mini-vfd .n { color: var(--vfd-dim); }
 html[data-surface='light'] .log-filter { background: var(--well, #f2f2f2); color: var(--muted); }
 html[data-surface='light'] .log-filter.active { background: linear-gradient(180deg, var(--key-top, #ffffff), var(--key-bot, #ededed)); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
+
+/* ---------- overlays stay dark in every pack ----------
+   Sheets (settings, bay editor, button packs), the deploy log drawer, toasts and the launch
+   bar bubble are drawn on fixed dark surfaces, so they keep the classic text and control
+   colours even when a light pack repaints the console. */
+:is(.sheet, .drawer, .toast, .bubble) {
+  --ink: #ecebe6; --ink-2: #b9bac0; --muted: #7d8089; --engrave: #5b5e67; --line: rgba(255, 255, 255, 0.06);
+  --key-top: #34353b; --key-bot: #26272c; --key-hover-top: #3a3b42; --key-hover-bot: #2a2b30; --key-edge: #0e0f11;
+  --thumb-top: #45474e; --thumb-bot: #2f3035; --well: #0b0c0e; --well-top: #131417; --well-bot: #18191c; --lamp-off: #2d2f34; --scroll: #2a2b30;
+}
+
+/* ---------- top bar tooltips ---------- */
+.topbar [data-tip] { position: relative; }
+.topbar [data-tip]::after {
+  content: attr(data-tip); position: absolute; top: calc(100% + 9px); left: 50%; z-index: 60;
+  padding: 6px 9px; border-radius: 8px; white-space: nowrap; pointer-events: none;
+  font: 600 11.5px/1 var(--sans); letter-spacing: 0; text-transform: none; text-shadow: none;
+  color: #ecebe6; background: rgba(24, 25, 28, 0.96);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 22px rgba(0, 0, 0, 0.45);
+  opacity: 0; transform: translate(-50%, -4px);
+  transition: opacity 0.12s, transform 0.16s var(--ease);
+}
+.topbar [data-tip-end]::after { left: auto; right: 0; transform: translateY(-4px); }
+.topbar [data-tip]:hover::after, .topbar [data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); transition-delay: 0.35s; }
+.topbar [data-tip-end]:hover::after, .topbar [data-tip-end]:focus-visible::after { transform: none; }
+.topbar [data-tip]:active::after { opacity: 0; transition-delay: 0s; }

@@ -1131,7 +1131,8 @@ function describe(e) {
 // the log's name and filter labels follow the button pack ("BLACK BOX", "HIGH SCORES", ...)
 function updateLogWords() {
   const name = word('FLIGHT LOG');
-  $('#btn-log').title = `${name.charAt(0)}${name.slice(1).toLowerCase()} (⌘L)`;
+  const nice = `${name.charAt(0)}${name.slice(1).toLowerCase()}`;
+  $('#btn-log').dataset.tip = name === 'FLIGHT LOG' ? 'Flight log  ⌘L' : `${nice}: activity log  ⌘L`;
   $('#flightlog').setAttribute('aria-label', name.charAt(0) + name.slice(1).toLowerCase());
   if (!LOG.built) return;
   LOG.title.textContent = name;
@@ -1218,10 +1219,10 @@ function renderLog() {
     const done = LOG.items.filter((e) => isDeploy(e) && e.type === 'succeeded');
     const failed = LOG.items.filter((e) => isDeploy(e) && e.type === 'failed').length;
     const avg = done.length ? Math.round(done.reduce((n, e) => n + (e.durationMs || 0), 0) / done.length / 1000) : 0;
-    out.push(h('div', { class: 'sheet-foot' },
-      h('div', { class: 'sheet-tabs' }, [['all', 'ALL'], ['failed', 'FAILED'], ['agent', 'AGENT']].map(([v, label]) =>
+    out.push(h('div', { class: 'ws-foot' },
+      h('div', { class: 'ws-tabs' }, [['all', 'ALL'], ['failed', 'FAILED'], ['agent', 'AGENT']].map(([v, label]) =>
         h('button', { class: LOG.filter === v ? 'active' : '', onclick: () => { LOG.filter = v; sfx.click(); renderLog(); } }, titleCase(word(label))))),
-      h('div', { class: 'sheet-status' }, h('span', {}, `SUM: ${done.length} shipped`), h('span', {}, `AVERAGE: ${avg}s`), h('span', {}, `COUNT(failed): ${failed}`))));
+      h('div', { class: 'ws-status' }, h('span', {}, `SUM: ${done.length} shipped`), h('span', {}, `AVERAGE: ${avg}s`), h('span', {}, `COUNT(failed): ${failed}`))));
   }
   if (style === 'guestbook') out.push(h('div', { class: 'hit-counter' }, 'You are deploy no.', h('b', {}, String(deploys).padStart(6, '0'))));
   LOG.paper.replaceChildren(...out);
@@ -2114,6 +2115,10 @@ if (api.isMock) {
       return true;
     },
     openLog,
+    openSettings,
+    openLook,
+    editBay: (i = 0) => openEditor(S.projects[i]),
+    addProject: () => addViaPicker(),
   };
 }
 
