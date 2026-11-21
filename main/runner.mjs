@@ -5,7 +5,9 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import { loadShellEnv, userShell } from './shellenv.mjs';
 import { uid } from './store.mjs';
-import { commandSteps, commandScript, commandDisplay } from '../renderer/steps.js';
+import { commandSteps, commandScript, commandDisplay, looksLikeDryRun, printedDryRun } from '../renderer/steps.js';
+
+export { looksLikeDryRun, printedDryRun };
 
 const MAX_LOG_LINES = 6000;
 const HISTORY_LOG_LINES = 400;
@@ -14,7 +16,8 @@ const CHECK_TIMEOUT_MS = 2 * 60 * 1000;
 const VERIFY_TRIES = 4;
 const VERIFY_GAP_MS = 5000;
 export const TERMINAL = new Set(['success', 'failed', 'cancelled', 'denied', 'expired', 'stopped']);
-const SUMMARY_KEYS = ['id', 'projectId', 'projectName', 'commandId', 'commandLabel', 'actionId', 'kind', 'cmd', 'cwd', 'source', 'client', 'reason', 'status', 'phase', 'value', 'url', 'verify', 'createdAt', 'startedAt', 'endedAt', 'exitCode'];
+const SUMMARY_KEYS = ['id', 'projectId', 'projectName', 'commandId', 'commandLabel', 'actionId', 'kind', 'cmd', 'cwd', 'source', 'client', 'reason', 'status', 'phase', 'value', 'url', 'verify', 'dryRun', 'createdAt', 'startedAt', 'endedAt', 'exitCode'];
+
 
 // eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*(\x07|\x1b\\)|\x1b[@-Z\\-_]/g;
@@ -140,6 +143,9 @@ export class Runner extends EventEmitter {
       siteUrl: project.url || '',
       parse: action?.parse || '',
       verifyAction: verify ? { label: verify.label, cmd: commandScript(verify.cmd), parse: verify.parse } : null,
+      dryRun: !action && looksLikeDryRun(button.cmd, button.label),
+      // the command that really ships, named in the "nothing was deployed" note
+      shipLabel: !action ? (project.commands.find((c) => c.id !== command.id && !looksLikeDryRun(c.cmd, c.label))?.label || '') : '',
       untrusted: button.trusted === false,
       source,
       client: String(client || '').slice(0, 40),
@@ -275,6 +281,11 @@ export class Runner extends EventEmitter {
       if (run.cancelRequested) return this.finish(run, 'cancelled', code, 'Cancelled.');
       if (run.timedOut) return this.finish(run, 'failed', code ?? 124, null);
       if (run.kind === 'check') run.value = checkValue(run.log.slice(run.outStart), run.parse);
+      if (code === 0 && run.kind === 'deploy' && !run.dryRun && printedDryRun(run.log.slice(run.outStart))) run.dryRun = true;
+      if (code === 0 && run.dryRun) {
+        const next = run.shipLabel ? ` To ship, switch the button to "${run.shipLabel}".` : '';
+        return this.finish(run, 'success', 0, `Dry run: it passed, but nothing was deployed.${next}`);
+      }
       if (code === 0 && run.verifyAction) return this.verify(run, env);
       this.finish(run, code === 0 ? 'success' : 'failed', exit, null);
     });
@@ -392,7 +403,7 @@ export class Runner extends EventEmitter {
     clearTimeout(run.approvalTimer);
     clearTimeout(run.timeout);
     clearTimeout(run.verifyTimer);
-    const { log, child, approvalTimer, timeout, verifyTimer, _pendingLog, _logTimer, outStart, ...rest } = run;
+    const { log, child, approvalTimer, timeout, verifyTimer, _pendingLog, _logTimer, outStart, shipLabel, ...rest } = run;
     this.store.addHistory({ ...rest, log: log.slice(-HISTORY_LOG_LINES) });
     this.emitUpdate(run);
     this.emit('finished', run);

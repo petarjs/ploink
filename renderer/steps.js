@@ -49,3 +49,19 @@ export function commandSummary(text) {
   if (steps.length > 1) return `${steps[0]} +${steps.length - 1}`;
   return steps[0] ?? String(text ?? '').trim();
 }
+
+// A dry run exits 0 but deploys nothing, so it must never read as "shipped". It is known by its
+// label or command ("dry run", --dry-run, deploy:dry-run), or by what it prints when it ends.
+const DRY_RUN_RE = /\bdry[-_ ]?run\b|--dryrun\b/i;
+const DRY_RUN_OUTPUT_RE = /--dry-run: exiting now|\bdry[- ]run (?:complete|completed|finished|succeeded|done|only)\b|\bthis (?:was|is) a dry[- ]run\b/i;
+
+/** True when a command (or its label) is a dry run. */
+export function looksLikeDryRun(cmd, label = '') {
+  return DRY_RUN_RE.test(String(label ?? '')) || DRY_RUN_RE.test(commandDisplay(cmd));
+}
+
+/** True when a command's output says it was a dry run. Lines may carry colour codes. */
+export function printedDryRun(lines) {
+  // eslint-disable-next-line no-control-regex
+  return lines.some((l) => DRY_RUN_OUTPUT_RE.test(String(l).replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')));
+}

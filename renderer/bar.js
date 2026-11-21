@@ -2,7 +2,7 @@
 import { h, capVars, colorFromName, monogram, ago, clock, dur, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
-import { commandSummary } from './steps.js';
+import { commandSummary, looksLikeDryRun } from './steps.js';
 import { applyPack, capColor, capShape, packOutline, readoutStyle, glyphText, word } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
@@ -247,13 +247,15 @@ function createCap(p) {
   const face = h('span', { class: 'mini-face' });
   const btn = h('button', { class: 'mini-cap' }, h('span', { class: 'mini-side' }), face);
   const key = h('span', { class: 'mini-key' });
+  // which command a press runs, when the project has more than one (or the one it has is a dry run)
+  const cmdTag = h('span', { class: 'mini-cmd' });
   const label = h('span', { class: 'mini-label' });
   const vfdName = h('span', { class: 'n' });
   const vfdStatus = h('span', { class: 's' });
   const vfd = h('div', { class: 'mini-vfd' }, vfdName, vfdStatus);
-  const core = h('div', { class: 'mini-core' }, ...leds, btn, key);
+  const core = h('div', { class: 'mini-core' }, ...leds, btn, key, cmdTag);
   const el = h('div', { class: 'mini', 'data-id': p.id }, core, label, vfd);
-  const cap = { project: p, el, btn, face, leds, key, label, vfd, vfdName, vfdStatus, index: 0, firedAt: 0 };
+  const cap = { project: p, el, btn, face, leds, key, cmdTag, label, vfd, vfdName, vfdStatus, index: 0, firedAt: 0 };
   placeLeds(leds, S.settings.buttonShape, (S.layout?.cap || 50) / 2 + 9);
 
   btn.addEventListener('pointerdown', (e) => {
@@ -297,11 +299,16 @@ function updateCap(cap) {
   cap.key.textContent = cap.index < 9 ? String(cap.index + 1) : cap.index === 9 ? '0' : '';
   if (cap.label.textContent !== p.name) cap.label.textContent = p.name;
   updateVfd(cap);
-  cap.btn.setAttribute('aria-label', `Deploy ${p.name}. Press and hold.`);
+  const sel = p.commands.find((c) => c.id === p.activeCommandId) || p.commands[0];
+  const dry = !!sel && looksLikeDryRun(sel.cmd, sel.label);
+  const tag = sel && (p.commands.length > 1 || dry) ? sel.label : '';
+  if (cap.cmdTag.textContent !== tag) cap.cmdTag.textContent = tag;
+  cap.cmdTag.classList.toggle('dry', dry);
+  cap.btn.setAttribute('aria-label', `${dry ? 'Dry run' : 'Deploy'} ${p.name}${tag ? ` (${tag})` : ''}. Press and hold.`);
   const s = run?.status;
   cap.el.classList.toggle('is-running', s === 'running' || s === 'starting');
   cap.el.classList.toggle('is-awaiting', s === 'awaiting_approval');
-  cap.el.classList.toggle('last-ok', s === 'success');
+  cap.el.classList.toggle('last-ok', s === 'success' && !run.dryRun);
   cap.el.classList.toggle('last-bad', s === 'failed');
   cap.el.classList.toggle('no-command', !p.commands.length);
 }
@@ -313,6 +320,7 @@ function updateVfd(cap) {
   const st = statusFor(p, run);
   let line = st.vfd;
   if (run?.status === 'running') line = `IN FLIGHT ${st.side}`;
+  else if (run?.status === 'success' && run.dryRun && Date.now() - run.endedAt < 15 * 60e3) line = 'DRY RUN OK';
   else if (run?.status === 'success' && Date.now() - run.endedAt < 15 * 60e3) line = `SHIPPED ${dur(run.endedAt - run.startedAt).toUpperCase()}`;
   else if (run?.status === 'success') line = `✓ ${ago(run.endedAt).toUpperCase()}`;
   else if (!run && p.commands.length) line = 'READY';
@@ -369,7 +377,9 @@ function statusFor(p, run) {
     case 'awaiting_approval': return { tone: 'warn', vfd: 'AGENT REQUEST', side: 'HOLD = OK', line: run.reason ? `“${run.reason}”` : `wants to run ${run.commandLabel}` };
     case 'starting': return { tone: '', vfd: 'IGNITION', side: '00:00', line: run.cmd };
     case 'running': return { tone: '', vfd: 'IN FLIGHT', side: clock(Date.now() - run.startedAt), line: run.lastLine || run.cmd };
-    case 'success': return { tone: 'ok', vfd: 'SHIPPED', side: ago(run.endedAt).toUpperCase(), line: `${run.commandLabel} · took ${dur(run.endedAt - run.startedAt)}` };
+    case 'success':
+      if (run.dryRun) return { tone: 'warn', vfd: 'DRY RUN OK', side: ago(run.endedAt).toUpperCase(), line: `nothing deployed · ${run.commandLabel}` };
+      return { tone: 'ok', vfd: 'SHIPPED', side: ago(run.endedAt).toUpperCase(), line: `${run.commandLabel} · took ${dur(run.endedAt - run.startedAt)}` };
     case 'failed': return { tone: 'bad', vfd: `FAILED · EXIT ${run.exitCode ?? '?'}`, side: ago(run.endedAt).toUpperCase(), line: run.lastLine || 'open the log' };
     case 'cancelled': return { tone: 'warn', vfd: 'ABORTED', side: ago(run.endedAt).toUpperCase(), line: `$ ${commandSummary(cmd.cmd)}` };
     default: return { tone: '', vfd: 'READY', side: cmd.label.toUpperCase(), line: `$ ${commandSummary(cmd.cmd)}` };
@@ -433,7 +443,11 @@ function renderAnnounce() {
   const p = cap.project;
   const run = S.latest[p.id] || {};
   let tone = '', big = '', line = '', actions = [];
-  if (a.status === 'success') {
+  if (a.status === 'success' && run.dryRun) {
+    tone = 'warn'; big = 'DRY RUN OK';
+    line = `nothing was deployed · ${run.commandLabel || ''} · ${dur((run.endedAt || 0) - (run.startedAt || 0))}`;
+    actions = [h('button', { onclick: (e) => { e.stopPropagation(); openLog(p.id, a.runId); } }, 'View log')];
+  } else if (a.status === 'success') {
     tone = 'ok'; big = word('SHIPPED') === 'SHIPPED' ? 'SHIPPED ✓' : word('SHIPPED');
     line = `${run.commandLabel || ''} · ${dur((run.endedAt || 0) - (run.startedAt || 0))}${run.source === 'agent' ? ' · by agent' : ''}`;
     actions = p.url ? [h('button', { onclick: (e) => { e.stopPropagation(); api.openUrl?.(/^https?:/.test(p.url) ? p.url : `https://${p.url}`); } }, 'Open site ↗')] : [];
@@ -617,7 +631,10 @@ function queueResult(projectId, status, audible) {
     const cap = S.caps.get(projectId);
     if (!cap) return;
     const c = capCenter(cap);
-    if (status === 'success') {
+    if (status === 'success' && S.latest[projectId]?.dryRun) {
+      // no confetti for a rehearsal
+      if (audible) { sfx.tick(18, 24); setTimeout(() => sfx.tick(22, 24), 90); }
+    } else if (status === 'success') {
       restartClass(cap.el, 'just-success', 5200);
       fx.celebrate('success', c.x, c.y, capColor(cap.project, cap.index), { text: S.latest[projectId]?.cmd });
       if (audible) sfx.success();

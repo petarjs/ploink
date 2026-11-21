@@ -1,4 +1,4 @@
-import { commandDisplay } from './steps.js';
+import { commandDisplay, looksLikeDryRun } from './steps.js';
 // In-browser stand-in for the Electron bridge, so the UI can be previewed and
 // designed without the app. Deploys are simulated. window.__mock drives agent events.
 const svg = (body, bg = 'none') =>
@@ -46,7 +46,7 @@ function mockUsage() {
 }
 const activity = [];
 function logA(e) { const ev = { id: 'a' + Math.random().toString(36).slice(2, 8), at: Date.now(), ...e }; activity.unshift(ev); emit('activity', { event: ev }); }
-const runBase = (r) => ({ projectId: r.projectId, projectName: r.projectName, runId: r.id, command: r.commandLabel, source: r.source, reason: r.reason || undefined });
+const runBase = (r) => ({ projectId: r.projectId, projectName: r.projectName, runId: r.id, command: r.commandLabel, source: r.source, reason: r.reason || undefined, ...(r.dryRun ? { dryRun: true } : {}) });
 for (const r of [runs.get('h1'), runs.get('h2'), runs.get('h3')]) {
   activity.push({ ...runBase(r), id: r.id + 's', at: r.startedAt, type: 'started' });
   activity.push({ ...runBase(r), id: r.id + 'e', at: r.endedAt, type: r.status === 'success' ? 'succeeded' : 'failed', exitCode: r.exitCode, durationMs: r.endedAt - r.startedAt, detail: r.status === 'failed' ? 'Error: health checks failed for machine 4d89' : undefined });
@@ -110,7 +110,7 @@ function simulate(run, fail) {
   const steps = fail ? SCRIPT.slice(0, 5).concat([['\x1b[31m✗ Error:\x1b[0m Build failed: Cannot find module "./config.prod"', 300]]) : SCRIPT;
   const next = () => {
     if (run.status !== 'running') return;
-    if (i >= steps.length && !fail && !run.verified && run.verifyAction) {
+    if (i >= steps.length && !fail && !run.verified && run.verifyAction && !run.dryRun) {
       // like the app: SHIPPED waits for the site check
       run.verified = true;
       run.phase = 'verify';
@@ -182,7 +182,7 @@ export const mockBridge = {
     const cmd = p.commands.find((c) => c.id === commandId) || p.commands[0];
     const needs = source === 'agent' && (settings.agentApproval === 'ask' || p.requireApproval);
     const verifyAction = (p.actions || []).find((a) => a.kind === 'check' && a.afterDeploy) || null;
-    const run = mkRun(p, cmd, needs ? 'awaiting_approval' : 'starting', { source, reason, kind: 'deploy', verifyAction });
+    const run = mkRun(p, cmd, needs ? 'awaiting_approval' : 'starting', { source, reason, kind: 'deploy', verifyAction, dryRun: looksLikeDryRun(cmd.cmd, cmd.label) });
     runs.set(run.id, run);
     emit('run', { run: summary(run) });
     if (!needs) simulate(run, failNext.delete(projectId));

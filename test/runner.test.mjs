@@ -7,7 +7,7 @@ import { Store } from '../main/store.mjs';
 import { Runner } from '../main/runner.mjs';
 import { resolveProject } from '../main/mcp.mjs';
 import { detectProject } from '../main/detect.mjs';
-import { commandSteps, commandScript, commandDisplay, commandSummary } from '../renderer/steps.js';
+import { commandSteps, commandScript, commandDisplay, commandSummary, looksLikeDryRun, printedDryRun } from '../renderer/steps.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ploink-test-'));
 const proj = path.join(tmp, 'site');
@@ -160,4 +160,60 @@ test('agents see the joined command in list_projects', async () => {
   } finally {
     mcp.stop();
   }
+});
+
+test('a dry-run command ends as a dry run, not a plain success, and names the real deploy', async () => {
+  const store = new Store(fs.mkdtempSync(path.join(tmp, 'data-')));
+  const project = store.upsertProject({
+    name: 'Site', cwd: proj,
+    commands: [{ label: 'deploy', cmd: 'echo deploying' }, { label: 'dry run', cmd: 'echo checking' }],
+  });
+  store.upsertProject({ id: project.id, activeCommandId: project.commands[1].id });
+  const runner = new Runner(store);
+  const { run } = runner.request({ project: store.projects.find((p) => p.id === project.id) });
+  const done = await runner.waitFor(run.id, 10000);
+  assert.equal(done.status, 'success');
+  assert.equal(done.dryRun, true);
+  assert.equal(runner.summary(done).dryRun, true);
+  assert.ok(done.log.some((l) => /nothing was deployed/.test(l) && /"deploy"/.test(l)));
+  assert.equal(store.historyFor(project.id)[0].dryRun, true);
+});
+
+test('a deploy whose output says it was a dry run is marked as one', async () => {
+  const { runner, project } = setup('echo "Total Upload: 1 KiB" && echo "--dry-run: exiting now."');
+  const { run } = runner.request({ project });
+  const done = await runner.waitFor(run.id, 10000);
+  assert.equal(done.status, 'success');
+  assert.equal(done.dryRun, true);
+});
+
+test('a dry run skips the site check after deploy', async () => {
+  const { runner, project } = setup('echo would upload 3 files --dry-run', {
+    actions: [{ label: 'site', kind: 'check', cmd: 'exit 1', afterDeploy: true }],
+  });
+  const { run } = runner.request({ project });
+  const done = await runner.waitFor(run.id, 10000);
+  assert.equal(done.status, 'success');
+  assert.equal(done.dryRun, true);
+  assert.equal(done.verify, null);
+});
+
+test('a normal deploy is not a dry run', async () => {
+  const { runner, project } = setup('echo "Deployed to https://my.site"');
+  const { run } = runner.request({ project });
+  const done = await runner.waitFor(run.id, 10000);
+  assert.equal(done.status, 'success');
+  assert.equal(done.dryRun, false);
+});
+
+test('dry-run detection reads labels, commands and output', () => {
+  assert.equal(looksLikeDryRun('pnpm run deploy:dry-run'), true);
+  assert.equal(looksLikeDryRun('wrangler deploy --dry-run'), true);
+  assert.equal(looksLikeDryRun('npm publish --dryrun'), true);
+  assert.equal(looksLikeDryRun('npm run check', 'dry run'), true);
+  assert.equal(looksLikeDryRun('npm run deploy', 'deploy'), false);
+  assert.equal(looksLikeDryRun('npm run deploy', 'prod'), false);
+  assert.equal(printedDryRun(['\x1b[2m--dry-run: exiting now.\x1b[0m']), true);
+  assert.equal(printedDryRun(['Dry run complete. 3 files would be uploaded.']), true);
+  assert.equal(printedDryRun(['Deployed to https://my.site', 'Skipping the dry run step']), false);
 });

@@ -393,6 +393,7 @@ img { -webkit-user-drag: none; }
   transition: color 0.2s;
 }
 .sel-opt.active { color: var(--ink); }
+.sel-opt.dry.active { color: var(--tone-warn, #ffc861); }
 .sel-opt:not(.active):hover { color: var(--ink-2); }
 .selector.single .selector-thumb { display: none; }
 .selector.single .sel-opt { color: var(--muted); cursor: default; text-transform: none; letter-spacing: 0.02em; font-weight: 500; font-size: 10.5px; text-align: center; }

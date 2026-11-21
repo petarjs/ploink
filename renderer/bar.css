@@ -224,6 +224,15 @@ body.edge-right:not(.shown) .mini { --dx: 26px; }
   opacity: 0; transition: opacity 0.2s;
 }
 body.keyboard .mini-key { opacity: 1; }
+/* the command a press runs, shown when a project has more than one */
+.mini-cmd {
+  position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); z-index: 4;
+  max-width: calc(var(--cs) + 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 700 8px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2, #d8d8d8);
+  padding: 2px 4px; border-radius: 4px; background: rgba(0, 0, 0, 0.62); pointer-events: none;
+}
+.mini-cmd:empty { display: none; }
+.mini-cmd.dry { color: #1a1300; background: var(--tone-warn, #ffc861); }
 
 .mini-cap:hover { --travel: -1px; }
 .mini.is-holding .mini-cap { --travel: 5px; }

@@ -169,7 +169,7 @@ export function describeActivity(e) {
   }
   switch (e.type) {
     case 'started': return `${e.projectName}: deploy${cmd} started by ${who}${e.reason ? `: "${e.reason}"` : ''}`;
-    case 'succeeded': return `${e.projectName}: shipped${cmd}${secs}`;
+    case 'succeeded': return e.dryRun ? `${e.projectName}: dry run${cmd} passed${secs}, nothing deployed` : `${e.projectName}: shipped${cmd}${secs}`;
     case 'failed': return `${e.projectName}: deploy${cmd} failed, exit ${e.exitCode ?? '?'}${secs}${e.detail ? ` — ${e.detail}` : ''}`;
     case 'cancelled': return `${e.projectName}: deploy${cmd} cancelled${secs}`;
     case 'requested': return `${e.projectName}: an agent asked to deploy${cmd}${e.reason ? `: "${e.reason}"` : ''}`;
@@ -215,6 +215,7 @@ function runReport(run, tail = 40) {
     kind: run.kind || 'deploy',
     command: run.commandLabel,
     shell_command: run.cmd,
+    dry_run: run.dryRun || undefined,
     status: run.status,
     final: TERMINAL.has(run.status),
     exit_code: run.exitCode,
@@ -243,7 +244,8 @@ export function createMcp({ store, runner, onAddProject, onAgentActivity, getUsa
         if (r.kind === 'service') return `${what} is running${r.url ? ` at ${r.url}` : ''}. Press it again (or cancel_deploy) to stop it.`;
         if (r.phase === 'verify') return 'Deployed; now checking the site. Call wait_for_deploy with this run_id.';
         return `${what} is running. Call wait_for_deploy with this run_id to follow it.`;
-      case 'success': return r.kind === 'check' ? `${what} passed: ${r.value || 'OK'}.` : r.verify?.ok ? `Deploy finished and the ${r.verify.label} check passed (${r.verify.value}).` : `${what} finished successfully.`;
+      case 'success': if (r.dryRun) return `"${r.commandLabel}" is a dry run: it passed, but nothing was deployed. To ship, deploy again with the real deploy command (the "command" argument).`;
+        return r.kind === 'check' ? `${what} passed: ${r.value || 'OK'}.` : r.verify?.ok ? `Deploy finished and the ${r.verify.label} check passed (${r.verify.value}).` : `${what} finished successfully.`;
       case 'failed':
         if (r.verify && !r.verify.ok) return `The deploy command succeeded, but the ${r.verify.label} check failed (${r.verify.value || 'no response'}). The site may be down.`;
         return `${what} failed. See output_tail, or call get_deploy_logs for the full output.`;

@@ -134,6 +134,7 @@ function recordRunActivity(run) {
   if (run.status === 'success' && run.value) base.value = run.value;
   if (run.status === 'failed' && (run.value || run.verify?.value)) base.value = run.value || run.verify.value;
   if (run.verify) base.site = { ok: run.verify.ok, value: run.verify.value };
+  if (run.dryRun) base.dryRun = true;
   switch (run.status) {
     case 'awaiting_approval': return logActivity({ ...base, type: 'requested' });
     case 'starting': if (prev === 'awaiting_approval') logActivity({ ...base, type: 'approved' }); return;
@@ -667,7 +668,8 @@ app.whenReady().then(async () => {
     if (consoleFocused()) return;
     if (['success', 'failed'].includes(run.status) && store.settings.announce) bar?.announce(run);
     const took = run.startedAt ? fmtDuration(run.endedAt - run.startedAt) : '';
-    if (run.status === 'success') notify(`${run.projectName} shipped`, `${run.commandLabel} · ${took}`, () => { showWindow(); send('open-run', { runId: run.id }); });
+    if (run.status === 'success' && run.dryRun) notify(`${run.projectName}: dry run passed`, `Nothing was deployed · ${run.commandLabel} · ${took}`, () => { showWindow(); send('open-run', { runId: run.id }); });
+    else if (run.status === 'success') notify(`${run.projectName} shipped`, `${run.commandLabel} · ${took}`, () => { showWindow(); send('open-run', { runId: run.id }); });
     else if (run.status === 'failed') notify(`${run.projectName} deploy failed`, `exit ${run.exitCode} · ${took}`, () => { showWindow(); send('open-run', { runId: run.id }); });
   });
 

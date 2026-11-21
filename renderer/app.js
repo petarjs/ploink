@@ -1,7 +1,7 @@
 import { h, capVars, colorFromIcon, colorFromName, monogram, ansiToHtml, ago, clock, dur, hostOf, CAP_COLORS, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
-import { commandSteps, commandSummary, commandDisplay } from './steps.js';
+import { commandSteps, commandSummary, commandDisplay, looksLikeDryRun } from './steps.js';
 import { applyPack, capColor, capShape, packOutline, readoutStyle, logStyle, quip, scramble, glyphText, specimenSvg, specimenName, word, previewVars } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
@@ -285,7 +285,7 @@ function updateBay(bay) {
   el.classList.toggle('is-running', status === 'running' || status === 'starting');
   el.classList.toggle('is-awaiting', status === 'awaiting_approval');
   el.classList.toggle('no-command', !p.commands.length);
-  el.classList.toggle('last-ok', status === 'success');
+  el.classList.toggle('last-ok', status === 'success' && !run.dryRun);
   el.classList.toggle('last-bad', status === 'failed');
   refs.deny.hidden = status !== 'awaiting_approval';
   updateLcd(bay);
@@ -316,7 +316,7 @@ function updateSelector(bay) {
       sel.className = 'selector';
       sel.replaceChildren(
         h('span', { class: 'selector-thumb' }),
-        ...p.commands.slice(0, 4).map((c) => h('button', { class: 'sel-opt', title: commandDisplay(c.cmd), 'data-cmd': c.id, onclick: () => selectCommand(bay, c.id) }, c.label)),
+        ...p.commands.slice(0, 4).map((c) => h('button', { class: `sel-opt${looksLikeDryRun(c.cmd, c.label) ? ' dry' : ''}`, title: `${looksLikeDryRun(c.cmd, c.label) ? 'Dry run, deploys nothing: ' : ''}${commandDisplay(c.cmd)}`, 'data-cmd': c.id, onclick: () => selectCommand(bay, c.id) }, c.label)),
       );
     }
   }
@@ -600,6 +600,11 @@ function lcdFor(p, run) {
     case 'success': {
       const fresh = Date.now() - run.endedAt < 15 * 60e3;
       const site = run.verify?.ok ? ` · site ${run.verify.value}` : '';
+      if (run.dryRun) {
+        // a dry run deploys nothing: say so, and never in the green "shipped" tone
+        if (fresh) return { tone: 'warn', status: 'DRY RUN OK', side: dur(run.endedAt - run.startedAt).toUpperCase(), ticker: `nothing deployed · ${ago(run.endedAt)} · ${run.commandLabel}${agent ? ' · by agent' : ''}` };
+        return { tone: '', status: 'READY', side: `dry ✓ ${since}`, ticker: base };
+      }
       if (fresh) return { tone: 'ok', status: 'SHIPPED', side: dur(run.endedAt - run.startedAt).toUpperCase(), ticker: `${ago(run.endedAt)} · ${run.commandLabel}${site}${agent ? ' · by agent' : ''}` };
       return { tone: '', status: 'READY', side: `✓ ${since}`, ticker: base };
     }
@@ -827,6 +832,10 @@ function transition(bay, prevStatus, run) {
     bay.el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } else if ((s === 'starting' || s === 'running') && (!prevStatus || prevStatus === 'awaiting_approval')) {
     if (run.source !== 'user') ghostPress(bay, audible);
+  } else if (s === 'success' && prevStatus && run.dryRun) {
+    // no confetti for a rehearsal: a small tick and a plain note that nothing went out
+    if (audible) { sfx.tick(18, 24); setTimeout(() => sfx.tick(22, 24), 90); }
+    if (audible) toast(`${bay.project.name}: dry run passed. Nothing was deployed.`, 'warn', 6000);
   } else if (s === 'success' && prevStatus) {
     restartClass(bay.el, 'just-success', 5200);
     const { x, y } = capCenter(bay);
@@ -987,7 +996,7 @@ function renderDrawerHead() {
   D.icon.replaceChildren(p.icon ? h('img', { src: p.icon, alt: '' }) : h('b', {}, monogram(p.name)));
   D.title.textContent = p.name;
   const isAction = !!run?.actionId;
-  const statusText = run ? { awaiting_approval: 'waiting for approval', starting: 'starting', running: isAction ? 'running' : run.phase === 'verify' ? 'checking the site' : 'deploying', success: isAction ? (run.value ? `ok · ${run.value}` : 'done') : 'shipped', failed: `failed (exit ${run.exitCode})`, cancelled: 'cancelled', denied: 'denied', expired: 'expired', stopped: 'stopped' }[run.status] : null;
+  const statusText = run ? { awaiting_approval: 'waiting for approval', starting: 'starting', running: isAction ? 'running' : run.phase === 'verify' ? 'checking the site' : 'deploying', success: isAction ? (run.value ? `ok · ${run.value}` : 'done') : run.dryRun ? 'dry run passed · nothing deployed' : 'shipped', failed: `failed (exit ${run.exitCode})`, cancelled: 'cancelled', denied: 'denied', expired: 'expired', stopped: 'stopped' }[run.status] : null;
   D.sub.textContent = run
     ? `${run.commandLabel} · ${statusText}${run.startedAt ? ' · ' + (run.endedAt ? dur(run.endedAt - run.startedAt) : clock(Date.now() - run.startedAt)) : ''}${run.source === 'agent' ? ` · started by ${run.client || 'agent'}` : ''}${run.reason ? ` · “${run.reason}”` : ''}`
     : prettyPath(p.cwd);
@@ -1123,7 +1132,9 @@ function describe(e) {
   }
   switch (e.type) {
     case 'started': return { tone: 'info', mark: '▲', what: [name, ' deploy started'], sub: [cmd, who(e.source), e.reason && `“${e.reason}”`] };
-    case 'succeeded': return { tone: 'ok', mark: '✓', what: [name, ' shipped'], sub: [cmd, secs(e.durationMs), e.site?.ok && `site ${e.site.value}`] };
+    case 'succeeded':
+      if (e.dryRun) return { tone: 'info', mark: '○', what: [name, ' dry run passed'], sub: ['nothing deployed', cmd, secs(e.durationMs)] };
+      return { tone: 'ok', mark: '✓', what: [name, ' shipped'], sub: [cmd, secs(e.durationMs), e.site?.ok && `site ${e.site.value}`] };
     case 'failed': return { tone: 'bad', mark: '✕', what: [name, ` failed · exit ${e.exitCode ?? '?'}`], sub: [e.detail || cmd, secs(e.durationMs)] };
     case 'cancelled': return { tone: 'warn', mark: '■', what: [name, ' aborted'], sub: [cmd, secs(e.durationMs)] };
     case 'requested': return { tone: 'warn', mark: '?', what: ['Agent asked to deploy ', name], sub: [cmd, e.reason && `“${e.reason}”`] };
@@ -1159,7 +1170,9 @@ function headline(e) {
     return `${P} ${K} ${String(e.type).toUpperCase()}`;
   }
   switch (e.type) {
-    case 'succeeded': return e.source === 'agent' ? `AGENT DEPLOYS ${P}; OWNER 'AT LUNCH'` : `${P} SHIPS${took}`;
+    case 'succeeded':
+      if (e.dryRun) return `${P} REHEARSES${took}; NOTHING SHIPS`;
+      return e.source === 'agent' ? `AGENT DEPLOYS ${P}; OWNER 'AT LUNCH'` : `${P} SHIPS${took}`;
     case 'failed': return `${P} DEPLOY COLLAPSES; EXIT ${e.exitCode ?? '?'}`;
     case 'started': return e.source === 'agent' ? `AGENT TAKES THE WHEEL AT ${P}` : `${P} GOES TO PRESS`;
     case 'cancelled': return `${P} DEPLOY PULLED AT THE LAST MINUTE`;
@@ -1224,7 +1237,7 @@ function renderLog() {
     ));
   }
   if (style === 'worksheet') {
-    const done = LOG.items.filter((e) => isDeploy(e) && e.type === 'succeeded');
+    const done = LOG.items.filter((e) => isDeploy(e) && e.type === 'succeeded' && !e.dryRun);
     const failed = LOG.items.filter((e) => isDeploy(e) && e.type === 'failed').length;
     const avg = done.length ? Math.round(done.reduce((n, e) => n + (e.durationMs || 0), 0) / done.length / 1000) : 0;
     out.push(h('div', { class: 'ws-foot' },
