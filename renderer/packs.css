@@ -235,6 +235,132 @@ html[data-panel='hazard'] .topbar::after {
 }
 html[data-panel='hazard'] .bay-num { color: var(--warn); }
 
+/* ---------- activity log paper (console only) ----------
+   receipt (default): cream thermal paper, drawn by styles.css. */
+
+/* terminal: a dark screen in the pack's readout colours */
+html[data-log='terminal'] .flightlog {
+  --log-paper: var(--lcd-2, #040706);
+  --log-texture: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px), radial-gradient(120% 60% at 50% 0%, var(--lcd-1, #0c1513), transparent 70%);
+  --log-ink: var(--vfd);
+  --log-strong: color-mix(in srgb, var(--vfd) 65%, white);
+  --log-sub: var(--vfd-dim);
+  --log-faint: var(--vfd-dim);
+  --log-time: var(--vfd-dim);
+  --log-head: var(--vfd);
+  --log-rule: color-mix(in srgb, var(--vfd) 28%, transparent);
+  --log-rule-head: color-mix(in srgb, var(--vfd) 40%, transparent);
+  --log-ok: var(--ok);
+  --log-bad: var(--bad);
+  --log-bad-strong: color-mix(in srgb, var(--bad) 70%, white);
+  --log-warn: var(--warn);
+  --log-info: var(--vfd-dim);
+  --log-hover: color-mix(in srgb, var(--vfd) 10%, transparent);
+  --log-scroll: color-mix(in srgb, var(--vfd) 35%, transparent);
+  --log-accent: var(--vfd);
+}
+html[data-log='terminal'] .paper {
+  background-blend-mode: normal;
+  text-shadow: 0 0 6px var(--vfd-glow);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vfd) 22%, transparent), inset 0 0 30px rgba(0, 0, 0, 0.6), 0 22px 40px rgba(0, 0, 0, 0.5);
+}
+html[data-log='terminal'] .entry .sub { text-shadow: none; }
+
+/* ledger: a ruled notebook page, calm and light */
+html[data-log='ledger'] .flightlog {
+  --log-paper: #fbfaf6;
+  --log-texture: linear-gradient(90deg, transparent 57px, rgba(214, 80, 80, 0.35) 57px 58px, transparent 58px), repeating-linear-gradient(180deg, transparent 0 21px, rgba(70, 120, 200, 0.16) 21px 22px);
+  --log-ink: #2b3440;
+  --log-strong: #151b23;
+  --log-sub: #6a7480;
+  --log-faint: #7d8794;
+  --log-time: #8a93a0;
+  --log-head: #5b6572;
+  --log-rule: rgba(70, 120, 200, 0.3);
+  --log-rule-head: rgba(214, 80, 80, 0.45);
+  --log-ok: #2a7a52;
+  --log-bad: #b8433a;
+  --log-bad-strong: #8f2f28;
+  --log-warn: #9a6a1c;
+  --log-info: #7d8794;
+  --log-font: var(--sans);
+}
+html[data-log='ledger'] .paper { background-blend-mode: normal; font-size: 11.5px; }
+html[data-log='ledger'] .paper-head { border-bottom-style: double; border-bottom-width: 3px; }
+
+/* parchment: an old scroll, inked in red and green */
+html[data-log='parchment'] .flightlog {
+  --log-paper: #f1e2bd;
+  --log-texture: var(--noise), radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(120, 72, 20, 0.28)), linear-gradient(180deg, rgba(90, 50, 10, 0.18), transparent 22px);
+  --log-font: 'Iowan Old Style', 'Palatino', Georgia, serif;
+  --log-ink: #3b2a17;
+  --log-strong: #24170a;
+  --log-sub: #7a6040;
+  --log-faint: #8b6f45;
+  --log-time: #8b6f45;
+  --log-head: #8c1c1c;
+  --log-rule: rgba(140, 100, 40, 0.45);
+  --log-rule-head: rgba(140, 28, 28, 0.55);
+  --log-ok: #1f6f3a;
+  --log-bad: #a4161a;
+  --log-bad-strong: #7d0f12;
+  --log-warn: #a8780b;
+  --log-info: #7a6040;
+  --log-hover: rgba(120, 72, 20, 0.08);
+  --log-scroll: rgba(120, 72, 20, 0.3);
+}
+html[data-log='parchment'] .paper { font-size: 12.5px; }
+html[data-log='parchment'] :is(.paper-head, .day) { font-variant: small-caps; letter-spacing: 0.12em; font-size: 11px; }
+html[data-log='parchment'] .entry time { font-style: italic; }
+
+/* jcard: a cassette insert, cream card with a 70s stripe */
+html[data-log='jcard'] .flightlog {
+  --log-paper: #f4ead2;
+  --log-texture: var(--noise), linear-gradient(180deg, rgba(90, 50, 20, 0.12), transparent 18px);
+  --log-font: 'Futura', 'Avenir Next', var(--sans);
+  --log-ink: #3a2414;
+  --log-strong: #24150a;
+  --log-sub: #7f6244;
+  --log-faint: #8e7253;
+  --log-time: #a4552a;
+  --log-head: #7a4a2a;
+  --log-rule: #d9c7a3;
+  --log-rule-head: transparent;
+  --log-ok: #5d7a1f;
+  --log-bad: #b8431b;
+  --log-bad-strong: #8e2f10;
+  --log-warn: #c27a12;
+  --log-info: #8e7253;
+  --log-hover: rgba(122, 74, 42, 0.08);
+}
+html[data-log='jcard'] .paper-head {
+  padding-bottom: 14px;
+  background: linear-gradient(90deg, #e8742c 0 25%, #ffb347 25% 50%, #8a9a3a 50% 75%, #7a4a2a 75%) left bottom / 100% 6px no-repeat;
+}
+html[data-log='jcard'] .day::before, html[data-log='jcard'] .day::after { border-top-style: solid; }
+
+/* scoresheet: a hockey game sheet, white with a blue grid and a red line */
+html[data-log='scoresheet'] .flightlog {
+  --log-paper: #f6f9fc;
+  --log-texture: linear-gradient(rgba(44, 110, 230, 0.1) 1px, transparent 1px) 0 0 / 100% 16px, linear-gradient(90deg, rgba(44, 110, 230, 0.1) 1px, transparent 1px) 0 0 / 16px 100%;
+  --log-ink: #14243a;
+  --log-strong: #0b1626;
+  --log-sub: #546378;
+  --log-faint: #5f7088;
+  --log-time: #2c6ee6;
+  --log-head: #0b1626;
+  --log-rule: rgba(44, 110, 230, 0.4);
+  --log-rule-head: #dc2630;
+  --log-ok: #1d7a46;
+  --log-bad: #c8102e;
+  --log-bad-strong: #9a0c23;
+  --log-warn: #b7700c;
+  --log-info: #5f7088;
+  --log-hover: rgba(44, 110, 230, 0.07);
+}
+html[data-log='scoresheet'] .paper { background-blend-mode: normal; }
+html[data-log='scoresheet'] .paper-head { border-bottom: 3px solid var(--log-rule-head); }
+
 @media (prefers-reduced-motion: reduce) {
   html[data-panel] .chassis::after { animation: none; }
   html[data-led='bulbs'] .led { animation: none; }

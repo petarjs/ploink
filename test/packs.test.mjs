@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   validatePack, parsePack, cleanSoundStep, loadPackDir, packCatalog, resolvePack, installPackFile, removePackFile,
-  DEFAULT_PACK_ID, MAX_PACK_BYTES,
+  DEFAULT_PACK_ID, MAX_PACK_BYTES, BLOCKS,
 } from '../main/packs.mjs';
 import { loadPro } from '../main/extensions.mjs';
 
@@ -22,6 +22,7 @@ test('a minimal pack gets every default', () => {
   assert.equal(pack.readout.style, 'vfd');
   assert.equal(pack.panel.style, 'plain');
   assert.equal(pack.bezel.style, 'steel');
+  assert.equal(pack.log.style, 'receipt');
   assert.equal(pack.tier, 'free');
   assert.deepEqual(pack.tokens, {});
   assert.deepEqual(pack.sounds, {});
@@ -166,4 +167,32 @@ test('the Pro hook returns null without a pro folder and loads one when present'
   assert.equal(pro.version, '1.2.3');
   assert.equal(pro.packs.length, 1);
   assert.equal(pro.activate, null);
+});
+
+test('log: a known style is kept, an unknown one falls back to the receipt', () => {
+  assert.equal(validatePack({ ...base, log: { style: 'terminal' } }).pack.log.style, 'terminal');
+  for (const style of ['receipt', 'terminal', 'ledger', 'parchment', 'jcard', 'scoresheet']) {
+    assert.equal(validatePack({ ...base, log: { style } }).pack.log.style, style);
+  }
+  const bad = validatePack({ ...base, log: { style: 'papyrus', paper: 'url(x)' } });
+  assert.equal(bad.pack.log.style, 'receipt');
+  assert.deepEqual(Object.keys(bad.pack.log), ['style'], 'only the style survives');
+  assert.ok(bad.warnings.some((w) => /log style/.test(w)));
+  assert.equal(validatePack({ ...base, log: 'terminal' }).pack.log.style, 'receipt', 'log must be an object');
+});
+
+test('log words: the title and filters can be renamed, within the word rules', () => {
+  const { pack, warnings } = validatePack({ ...base, words: { 'FLIGHT LOG': 'black box', ALL: 'all', AGENT: 'autopilot', LOG: 'nope', 'FLIGHT LOG ': 'x' } });
+  assert.deepEqual(pack.words, { 'FLIGHT LOG': 'BLACK BOX', ALL: 'ALL', AGENT: 'AUTOPILOT' });
+  assert.equal(warnings.length, 2);
+  assert.equal(validatePack({ ...base, words: { 'FLIGHT LOG': 'A LOG FAR TOO LONG TO FIT' } }).pack.words['FLIGHT LOG'], 'A LOG FAR TOO ', 'cut to 14 characters');
+  assert.deepEqual(validatePack({ ...base, words: { 'FLIGHT LOG': '<b>log</b>' } }).pack.words, {});
+});
+
+test('every built-in pack has a log style and the default keeps the flight log name', () => {
+  const packs = loadPackDir(path.join(ROOT, 'packs'));
+  const mc = packs.find((p) => p.id === DEFAULT_PACK_ID);
+  assert.equal(mc.log.style, 'receipt');
+  assert.equal(mc.words['FLIGHT LOG'], undefined);
+  for (const p of packs) assert.ok(BLOCKS.log.includes(p.log.style), p.id);
 });

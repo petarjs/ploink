@@ -1,6 +1,6 @@
 # Button packs
 
-A button pack changes how Ploink looks and sounds: the caps, the ring around them, the LED ring, the readout, the panel, the sounds, the launch and result effects, and a few readout words. Packs only change looks and sounds. Your deploys work the same with every pack.
+A button pack changes how Ploink looks and sounds: the caps, the ring around them, the LED ring, the readout, the panel, the activity log, the sounds, the launch and result effects, and a few words. Packs only change looks and sounds. Your deploys work the same with every pack.
 
 Click the LED ring button in the top bar to open **Button packs**. Click a pack to try it on your bays.
 
@@ -32,6 +32,7 @@ A pack is one JSON file with the extension `.ploinkpack`, at most 64 KB. To inst
   "led": { "style": "comet" },
   "readout": { "style": "vfd" },
   "panel": { "style": "grid" },
+  "log": { "style": "terminal" },
   "sounds": {
     "success": [
       { "kind": "tone", "type": "sawtooth", "freq": 440, "decay": 0.25, "peak": 0.05, "echo": true },
@@ -40,7 +41,7 @@ A pack is one JSON file with the extension `.ploinkpack`, at most 64 KB. To inst
     "launch": null
   },
   "effects": { "success": { "kind": "sweep", "palette": ["#ff3df2", "#3df5ff"] } },
-  "words": { "SHIPPED": "OUTRUN", "FAILED": "GLITCH" }
+  "words": { "SHIPPED": "OUTRUN", "FAILED": "GLITCH", "FLIGHT LOG": "TRANSMISSIONS" }
 }
 ```
 
@@ -64,8 +65,9 @@ Only `format`, `id` and `name` are required. Everything you leave out uses the M
 | `led.palette` | Up to 4 colours for `bulbs` |
 | `readout.style` | `vfd` (default), `seven-seg`, `dot-matrix`, `backlit` |
 | `panel.style` | `plain` (default), `wood`, `grid`, `scanlines`, `rink`, `frost`, `hazard` |
+| `log.style` | The activity log's paper: `receipt` (default, cream thermal paper), `terminal` (a dark screen in the pack's readout colours), `ledger` (a ruled notebook page), `parchment` (an old scroll), `jcard` (a cassette insert) or `scoresheet` (a hockey game sheet) |
 | `effects.launch`, `effects.success`, `effects.fail` | `kind`: `ignite`, `confetti`, `pixels`, `sweep`, `flash`, `snow`, `goal`, `runway`, `fizzle` or `none`. Optional `palette` (up to 8 colours), `count` (1 to 200) and `size` (0.5 to 2) |
-| `words` | New text for `READY`, `IGNITION`, `IN FLIGHT`, `SHIPPED`, `FAILED`, `ABORTED` and `IDLE`. At most 14 letters, digits or simple punctuation |
+| `words` | New text for the readout states `READY`, `IGNITION`, `IN FLIGHT`, `SHIPPED`, `FAILED`, `ABORTED` and `IDLE`, for the activity log's name (`FLIGHT LOG`) and for its filters (`ALL`, `AGENT`; the failures filter uses `FAILED`). At most 14 letters, digits or simple punctuation |
 
 Tokens a pack may set: `--chassis`, `--chassis-top`, `--chassis-bot`, `--topbar-top`, `--topbar-bot`, `--plate`, `--plate-hi`, `--plate-lo`, `--hole`, `--line`, `--ink`, `--ink-2`, `--muted`, `--engrave`, `--vfd`, `--vfd-glow`, `--vfd-dim`, `--ok`, `--bad`, `--warn`, `--brand`, `--brand-lo`, `--bay-top`, `--bay-mid`, `--bay-bot`, `--led-off`, `--lcd-1`, `--lcd-2`, `--screw`.
 

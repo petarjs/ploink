@@ -22,34 +22,151 @@
     "--lcd-2": "#0d0e0d",
     "--led-off": "#303236"
   },
-  "cap": { "material": "matte" },
-  "bezel": { "style": "black" },
-  "led": { "style": "dots" },
-  "readout": { "style": "vfd" },
-  "panel": { "style": "plain" },
+  "cap": {
+    "material": "matte"
+  },
+  "bezel": {
+    "style": "black"
+  },
+  "led": {
+    "style": "dots"
+  },
+  "readout": {
+    "style": "vfd"
+  },
+  "panel": {
+    "style": "plain"
+  },
+  "log": {
+    "style": "ledger"
+  },
   "sounds": {
     "press": [
-      { "kind": "noise", "type": "highpass", "freq": 3200, "peak": 0.06, "decay": 0.02 },
-      { "kind": "tone", "type": "sine", "freq": 150, "to": 90, "peak": 0.12, "decay": 0.06 }
+      {
+        "kind": "noise",
+        "type": "highpass",
+        "freq": 3200,
+        "peak": 0.06,
+        "decay": 0.02
+      },
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 150,
+        "to": 90,
+        "peak": 0.12,
+        "decay": 0.06
+      }
     ],
-    "release": [{ "kind": "tone", "type": "sine", "freq": 420, "to": 620, "peak": 0.05, "decay": 0.07 }],
-    "tick": [{ "kind": "tone", "type": "sine", "freq": 700, "peak": 0.012, "attack": 0.002, "decay": 0.03, "rise": 0.8 }],
-    "launch": [{ "kind": "tone", "type": "sine", "freq": 110, "to": 60, "peak": 0.16, "decay": 0.25 }],
+    "release": [
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 420,
+        "to": 620,
+        "peak": 0.05,
+        "decay": 0.07
+      }
+    ],
+    "tick": [
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 700,
+        "peak": 0.012,
+        "attack": 0.002,
+        "decay": 0.03,
+        "rise": 0.8
+      }
+    ],
+    "launch": [
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 110,
+        "to": 60,
+        "peak": 0.16,
+        "decay": 0.25
+      }
+    ],
     "success": [
-      { "kind": "tone", "type": "sine", "freq": 659.25, "peak": 0.07, "attack": 0.01, "decay": 0.35 },
-      { "kind": "tone", "type": "sine", "freq": 987.77, "at": 0.11, "peak": 0.06, "attack": 0.01, "decay": 0.5 }
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 659.25,
+        "peak": 0.07,
+        "attack": 0.01,
+        "decay": 0.35
+      },
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 987.77,
+        "at": 0.11,
+        "peak": 0.06,
+        "attack": 0.01,
+        "decay": 0.5
+      }
     ],
-    "fail": [{ "kind": "tone", "type": "triangle", "freq": 220, "to": 165, "peak": 0.08, "decay": 0.35 }],
+    "fail": [
+      {
+        "kind": "tone",
+        "type": "triangle",
+        "freq": 220,
+        "to": 165,
+        "peak": 0.08,
+        "decay": 0.35
+      }
+    ],
     "request": [
-      { "kind": "tone", "type": "sine", "freq": 880, "peak": 0.06, "decay": 0.25 },
-      { "kind": "tone", "type": "sine", "freq": 659.25, "at": 0.14, "peak": 0.06, "decay": 0.35 }
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 880,
+        "peak": 0.06,
+        "decay": 0.25
+      },
+      {
+        "kind": "tone",
+        "type": "sine",
+        "freq": 659.25,
+        "at": 0.14,
+        "peak": 0.06,
+        "decay": 0.35
+      }
     ],
-    "click": [{ "kind": "noise", "type": "highpass", "freq": 3000, "peak": 0.06, "decay": 0.012 }]
+    "click": [
+      {
+        "kind": "noise",
+        "type": "highpass",
+        "freq": 3000,
+        "peak": 0.06,
+        "decay": 0.012
+      }
+    ]
   },
   "effects": {
-    "launch": { "kind": "none" },
-    "success": { "kind": "flash", "palette": ["#9fe3b8"], "size": 0.8 },
-    "fail": { "kind": "flash", "palette": ["#ff8f86"], "size": 0.7 }
+    "launch": {
+      "kind": "none"
+    },
+    "success": {
+      "kind": "flash",
+      "palette": [
+        "#9fe3b8"
+      ],
+      "size": 0.8
+    },
+    "fail": {
+      "kind": "flash",
+      "palette": [
+        "#ff8f86"
+      ],
+      "size": 0.7
+    }
   },
-  "words": { "IN FLIGHT": "WORKING", "SHIPPED": "DONE" }
+  "words": {
+    "IN FLIGHT": "WORKING",
+    "SHIPPED": "DONE",
+    "FLIGHT LOG": "ACTIVITY"
+  }
 }

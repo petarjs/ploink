@@ -1047,11 +1047,11 @@ const writeSeen = (t) => { try { localStorage.setItem(SEEN_KEY, String(t)); } ca
 function buildFlightLog() {
   const el = $('#flightlog');
   const filters = [['all', 'ALL'], ['failed', 'FAILED'], ['agent', 'AGENT']].map(([v, label]) =>
-    h('button', { class: 'log-filter', 'data-v': v, onclick: () => { LOG.filter = v; sfx.click(); renderLog(); } }, label));
+    h('button', { class: 'log-filter', 'data-v': v, 'data-word': label, onclick: () => { LOG.filter = v; sfx.click(); renderLog(); } }, word(label)));
   el.replaceChildren(
     h('div', { class: 'printer' },
       h('i', { class: 'printer-led' }),
-      h('span', { class: 'printer-title' }, 'FLIGHT LOG'),
+      (LOG.title = h('span', { class: 'printer-title' }, word('FLIGHT LOG'))),
       ...filters,
       h('button', { class: 'keycap small', title: 'Close (Esc)', onclick: closeLog }, ICON.x()),
       h('i', { class: 'printer-slot' }),
@@ -1103,6 +1103,16 @@ function describe(e) {
     case 'removed': return { tone: 'info', mark: '−', what: [name, ' removed'], sub: [] };
     default: return { tone: 'info', mark: '·', what: [name, ` ${e.type}`], sub: [] };
   }
+}
+
+// the log's name and filter labels follow the button pack ("BLACK BOX", "HIGH SCORES", ...)
+function updateLogWords() {
+  const name = word('FLIGHT LOG');
+  $('#btn-log').title = `${name.charAt(0)}${name.slice(1).toLowerCase()} (⌘L)`;
+  $('#flightlog').setAttribute('aria-label', name.charAt(0) + name.slice(1).toLowerCase());
+  if (!LOG.built) return;
+  LOG.title.textContent = name;
+  for (const b of LOG.filters) b.textContent = word(b.dataset.word);
 }
 
 function renderLog() {
@@ -1765,6 +1775,7 @@ function setLook(look) {
 function restyleBays() {
   for (const bay of S.bays.values()) updateBay(bay);
   updateLamps();
+  updateLogWords();
 }
 
 function updateBrand() {
@@ -2001,6 +2012,7 @@ Object.assign(S, { projects: state.projects, settings: state.settings, latest: s
 S.look = state.look || null;
 applyPack(S.look?.pack);
 updateBrand();
+updateLogWords();
 configureAudio(S.settings);
 applyLook();
 buildDrawer();

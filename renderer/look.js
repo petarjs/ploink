@@ -23,6 +23,7 @@ export function applyPack(pack) {
   root.dataset.led = pack?.led?.style || 'dots';
   root.dataset.readout = pack?.readout?.style || 'vfd';
   root.dataset.panel = pack?.panel?.style || 'plain';
+  root.dataset.log = pack?.log?.style || 'receipt';
   setSoundPack(pack?.sounds || {});
   setEffects(pack?.effects || {});
 }

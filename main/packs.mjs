@@ -16,6 +16,7 @@ export const BLOCKS = {
   led: ['dots', 'segments', 'comet', 'bulbs'],
   readout: ['vfd', 'seven-seg', 'dot-matrix', 'backlit'],
   panel: ['plain', 'wood', 'grid', 'scanlines', 'rink', 'frost', 'hazard'],
+  log: ['receipt', 'terminal', 'ledger', 'parchment', 'jcard', 'scoresheet'],
   effect: ['confetti', 'pixels', 'sweep', 'flash', 'snow', 'goal', 'runway', 'fizzle', 'ignite', 'none'],
   wave: ['sine', 'square', 'sawtooth', 'triangle'],
   filter: ['lowpass', 'highpass', 'bandpass'],
@@ -24,8 +25,9 @@ export const BLOCKS = {
 // The sounds in renderer/audio.js. A pack may replace any of them; [] means silence.
 export const SOUND_EVENTS = ['press', 'release', 'tick', 'launch', 'success', 'fail', 'request', 'click', 'denied', 'install', 'whoosh', 'thunk', 'boot', 'printer'];
 export const EFFECT_EVENTS = ['launch', 'success', 'fail'];
-// Readout words a pack may rename. FAILED also renames "FAILED · EXIT 1".
-export const WORD_KEYS = ['READY', 'IGNITION', 'IN FLIGHT', 'SHIPPED', 'FAILED', 'ABORTED', 'IDLE'];
+// Words a pack may rename: readout states, the activity log's title and its filters.
+// FAILED also renames "FAILED · EXIT 1" and the log's failures filter.
+export const WORD_KEYS = ['READY', 'IGNITION', 'IN FLIGHT', 'SHIPPED', 'FAILED', 'ABORTED', 'IDLE', 'FLIGHT LOG', 'ALL', 'AGENT'];
 
 // CSS custom properties a pack may set. Every default lives in styles.css / bar.css.
 export const TOKENS = [
@@ -130,6 +132,7 @@ export function validatePack(input) {
     led: { style: 'dots' },
     readout: { style: 'vfd' },
     panel: { style: 'plain' },
+    log: { style: 'receipt' },
     sounds: {},
     effects: {},
     words: {},
@@ -157,6 +160,7 @@ export function validatePack(input) {
   if (ledPal) pack.led.palette = ledPal;
   pack.readout.style = pick(part('readout').style, BLOCKS.readout, 'vfd', warn, 'readout style');
   pack.panel.style = pick(part('panel').style, BLOCKS.panel, 'plain', warn, 'panel style');
+  pack.log.style = pick(part('log').style, BLOCKS.log, 'receipt', warn, 'log style');
 
   if (input.sounds !== undefined) {
     const sounds = part('sounds');
