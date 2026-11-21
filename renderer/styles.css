@@ -423,9 +423,9 @@ img { -webkit-user-drag: none; }
 .lcd-side { font-size: 10px; letter-spacing: 0.1em; color: var(--vfd-dim); white-space: nowrap; text-shadow: 0 0 4px rgba(116, 247, 212, 0.25); }
 .lcd-ticker { margin-top: 5px; font-size: 10px; color: var(--vfd-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 4px rgba(116, 247, 212, 0.2); }
 .lcd-badge { display: inline-block; margin-right: 6px; padding: 0 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; color: #041; background: var(--vfd); box-shadow: 0 0 6px var(--vfd-glow); vertical-align: 1px; }
-.lcd.tone-ok { --vfd: #7dfcae; --vfd-glow: rgba(125, 252, 174, 0.6); --vfd-dim: rgba(125, 252, 174, 0.38); }
-.lcd.tone-bad { --vfd: #ff7a6e; --vfd-glow: rgba(255, 122, 110, 0.6); --vfd-dim: rgba(255, 122, 110, 0.45); }
-.lcd.tone-warn { --vfd: #ffc861; --vfd-glow: rgba(255, 200, 97, 0.6); --vfd-dim: rgba(255, 200, 97, 0.42); }
+.lcd.tone-ok { --vfd: var(--tone-ok, #7dfcae); --vfd-glow: color-mix(in srgb, var(--tone-ok, #7dfcae) 60%, transparent); --vfd-dim: color-mix(in srgb, var(--tone-ok, #7dfcae) 38%, transparent); }
+.lcd.tone-bad { --vfd: var(--tone-bad, #ff7a6e); --vfd-glow: color-mix(in srgb, var(--tone-bad, #ff7a6e) 60%, transparent); --vfd-dim: color-mix(in srgb, var(--tone-bad, #ff7a6e) 45%, transparent); }
+.lcd.tone-warn { --vfd: var(--tone-warn, #ffc861); --vfd-glow: color-mix(in srgb, var(--tone-warn, #ffc861) 60%, transparent); --vfd-dim: color-mix(in srgb, var(--tone-warn, #ffc861) 42%, transparent); }
 .lcd.tone-off { --vfd: #59606a; --vfd-glow: transparent; --vfd-dim: #474c54; }
 .lcd.flash .lcd-status { animation: vfdFlash 0.7s steps(2) 2; }
 @keyframes vfdFlash { 50% { opacity: 0.2; } }

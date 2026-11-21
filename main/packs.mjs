@@ -42,6 +42,8 @@ export const TOKENS = [
   '--key-top', '--key-bot', '--key-hover-top', '--key-hover-bot', '--key-edge', '--thumb-top', '--thumb-bot',
   '--well', '--well-top', '--well-bot', '--lamp-off', '--strip', '--scroll', '--ring',
   '--socket', '--socket-ring', '--socket-ink', '--medal-1', '--medal-2',
+  // readout colours after a deploy ships, fails or needs attention (light readouts need darker ones)
+  '--tone-ok', '--tone-bad', '--tone-warn',
 ];
 
 // Ticker lines a pack can add ("quips"), shown on a bay when something happens.

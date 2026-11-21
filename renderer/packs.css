@@ -403,8 +403,8 @@ html[data-cap='flat'] .cap-medal { box-shadow: inset 0 0 0 2px #000; }
 html[data-cap='droplet'] :is(.cap-face, .mini-face) {
   background:
     radial-gradient(40% 26% at 38% 22%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 100%),
-    radial-gradient(80% 60% at 50% 110%, color-mix(in srgb, var(--cap) 45%, transparent), transparent 70%),
-    rgba(255, 255, 255, 0.08);
+    radial-gradient(80% 60% at 50% 110%, color-mix(in srgb, var(--cap) 70%, white), transparent 70%),
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--cap) 30%, rgba(235, 245, 255, 0.55)), color-mix(in srgb, var(--cap) 55%, rgba(20, 30, 70, 0.35)) 100%);
   backdrop-filter: blur(3px) saturate(1.5);
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.75), inset 0 -8px 16px rgba(255, 255, 255, 0.25), inset 0 6px 14px rgba(0, 0, 40, 0.25), 0 10px 22px -8px rgba(0, 0, 40, 0.5);
   transition: transform 0.7s cubic-bezier(0.3, 1.9, 0.45, 1);
@@ -742,7 +742,7 @@ html[data-log='worksheet'] .flightlog {
   --log-ink: #1f1f1f; --log-strong: #000; --log-sub: #616161; --log-faint: #616161; --log-time: #3a3a3a; --log-head: #1f1f1f;
   --log-rule: #d4d4d4; --log-rule-head: #b0b0b0; --log-ok: #1e7a4a; --log-bad: #c00000; --log-bad-strong: #9c0006; --log-warn: #9c5700; --log-info: #616161; --log-hover: #e8f3ec;
 }
-html[data-log='worksheet'] .paper { padding: 0 0 4px; margin-top: -12px; background-image: none; }
+html[data-log='worksheet'] .paper { padding: 0 0 4px; margin-top: 0; background-image: none; }
 html[data-log='worksheet'] .paper-head { position: sticky; top: 0; z-index: 2; text-align: left; padding: 6px 8px; margin: 0; font: 700 11px/1 var(--sans); letter-spacing: 0; background: #f3f3f3; border-bottom: 2px solid #1e7a4a; }
 html[data-log='worksheet'] .day { margin: 0; padding: 4px 8px; background: #e2efda; color: #1e5c37; border-bottom: 1px solid #d4d4d4; }
 html[data-log='worksheet'] .day::before, html[data-log='worksheet'] .day::after { display: none; }
@@ -751,11 +751,13 @@ html[data-log='worksheet'] .entry:nth-of-type(even) { background: #f7f7f7; }
 html[data-log='worksheet'] .entry time { border-right: 1px solid #e0e0e0; }
 html[data-log='worksheet'] .entry.bad { background: #ffc7ce !important; }
 html[data-log='worksheet'] .entry.bad .what, html[data-log='worksheet'] .entry.bad .mark { color: #9c0006; }
-.sheet-foot { position: sticky; bottom: -26px; z-index: 2; margin: 8px 0 -26px; background: #f3f3f3; border-top: 1px solid #c8c8c8; font: 500 10.5px/1 var(--sans); color: #333; }
+html[data-log='worksheet'] .paper { display: flex; flex-direction: column; }
+html[data-log='worksheet'] .paper > * { flex: none; }
+.sheet-foot { position: sticky; bottom: -4px; z-index: 2; margin: auto 0 -4px; padding-top: 0; background: #f3f3f3; border-top: 1px solid #c8c8c8; font: 500 10.5px/1 var(--sans); color: #333; }
 .sheet-tabs { display: flex; gap: 2px; padding: 0 8px; }
 .sheet-tabs button { padding: 5px 10px; font: 600 10.5px/1 var(--sans); color: #444; background: #e6e6e6; border-radius: 0 0 4px 4px; }
 .sheet-tabs button.active { background: #fff; color: #1e7a4a; box-shadow: inset 0 -2px 0 #1e7a4a; }
-.sheet-status { display: flex; justify-content: flex-end; gap: 14px; padding: 6px 10px; border-top: 1px solid #d4d4d4; color: #444; }
+.sheet-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; padding: 6px 10px; border-top: 1px solid #d4d4d4; color: #444; white-space: nowrap; }
 html[data-log='worksheet'] .log-filter { display: none; }
 
 /* frosted: a frosted pane that blurs the bays behind it */
@@ -960,13 +962,13 @@ html[data-log='slips'] .entry:nth-of-type(odd) { rotate: -0.5deg; }
 html[data-log='mirror'] .flightlog {
   --log-paper: #c9d6dc; --log-texture: radial-gradient(60% 50% at 30% 30%, rgba(255, 255, 255, 0.55), transparent 70%), radial-gradient(70% 60% at 70% 80%, rgba(255, 255, 255, 0.35), transparent 70%);
   --log-font: 'Chalkboard SE', 'Marker Felt', 'Comic Sans MS', var(--sans);
-  --log-ink: #ffffff; --log-strong: #ffffff; --log-sub: rgba(255, 255, 255, 0.85); --log-faint: rgba(43, 76, 126, 0.7); --log-time: rgba(43, 76, 126, 0.75); --log-head: #2b4c7e; --log-rule: rgba(255, 255, 255, 0.6); --log-rule-head: rgba(255, 255, 255, 0.6);
-  --log-ok: #ffffff; --log-bad: #ffffff; --log-bad-strong: #ffffff; --log-warn: #ffffff; --log-info: #ffffff; --log-hover: rgba(255, 255, 255, 0.15);
+  --log-ink: #3b5670; --log-strong: #22405f; --log-sub: #5b7389; --log-faint: rgba(43, 76, 126, 0.75); --log-time: rgba(43, 76, 126, 0.8); --log-head: #2b4c7e; --log-rule: rgba(43, 76, 126, 0.3); --log-rule-head: rgba(43, 76, 126, 0.3);
+  --log-ok: #22405f; --log-bad: #a33a4e; --log-bad-strong: #8a2a3e; --log-warn: #b0601f; --log-info: #3b5670; --log-hover: rgba(255, 255, 255, 0.25);
 }
 html[data-log='mirror'] .paper { border-radius: 18px; box-shadow: inset 0 0 0 4px #e8eef0, inset 0 0 30px rgba(255, 255, 255, 0.6), 0 20px 40px rgba(0, 0, 0, 0.3); }
-html[data-log='mirror'] .entry .what, html[data-log='mirror'] .entry .sub { text-shadow: 0 0 1px rgba(43, 76, 126, 0.5), 0 1px 2px rgba(43, 76, 126, 0.35); }
+html[data-log='mirror'] .entry .what, html[data-log='mirror'] .entry .sub { text-shadow: 0 0 3px rgba(255, 255, 255, 0.9), 0 0 1px rgba(255, 255, 255, 0.9); }
 html[data-log='mirror'] .entry.bad { position: relative; }
-html[data-log='mirror'] .entry.bad::after { content: ''; position: absolute; left: 70px; top: 20px; width: 2px; height: 22px; border-radius: 2px; background: linear-gradient(rgba(255, 255, 255, 0.9), transparent); box-shadow: 30px 4px 0 rgba(255, 255, 255, 0.6), 72px -2px 0 rgba(255, 255, 255, 0.7); }
+html[data-log='mirror'] .entry.bad::after { content: ''; position: absolute; left: 70px; top: 20px; width: 2px; height: 22px; border-radius: 2px; background: linear-gradient(rgba(255, 255, 255, 0.9), transparent); background: linear-gradient(rgba(43, 76, 126, 0.35), transparent); box-shadow: 30px 4px 0 rgba(43, 76, 126, 0.22), 72px -2px 0 rgba(43, 76, 126, 0.28); }
 
 /* tarot: cards on velvet; shipped upright, failed reversed */
 html[data-log='tarot'] .flightlog {
@@ -1018,3 +1020,15 @@ html.glitching :is(.chassis, .plate) { animation: glitchTear 0.34s steps(2) both
 .fxd-foot { display: flex; justify-content: flex-end; padding: 6px 12px 12px; }
 .fxd-foot button { min-width: 72px; height: 24px; border-radius: 4px; font: 600 12px var(--sans, sans-serif); color: #1a1a1a; background: linear-gradient(#ffffff, #e4e0d2); box-shadow: inset 0 0 0 1px #8a8578; cursor: pointer; }
 .fxd-foot button:hover { box-shadow: inset 0 0 0 2px #f2a03d; }
+
+/* flat caps bring their neobrutalist bays and keys along */
+html[data-cap='flat'] .bay { border-radius: 14px; box-shadow: 0 0 0 3px #000, 8px 8px 0 #000; transform: none !important; }
+html[data-cap='flat'] .bay::before { display: none; }
+html[data-cap='flat'] :is(.keycap, .key) { box-shadow: 0 0 0 2px #000, 3px 3px 0 #000; }
+html[data-cap='flat'] :is(.lcd, .selector) { box-shadow: 0 0 0 2px #000; }
+html[data-cap='flat'] .plate { box-shadow: 0 0 0 3px #000, 6px 6px 0 #000; }
+
+/* light packs: the cockpit bar's project names read in the readout's own ink */
+:where(html[data-surface='light']) .mini-vfd .n { color: var(--vfd-dim); }
+html[data-surface='light'] .log-filter { background: var(--well, #f2f2f2); color: var(--muted); }
+html[data-surface='light'] .log-filter.active { background: linear-gradient(180deg, var(--key-top, #ffffff), var(--key-bot, #ededed)); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }

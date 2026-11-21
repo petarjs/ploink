@@ -2089,6 +2089,34 @@ api.on((evt) => {
   }
 });
 
+// browser preview only: a handle for screenshots and effect checks
+if (api.isMock) {
+  window.__ploink = {
+    fx, sfx, S,
+    effect(event = 'success', index = 0) {
+      const bay = S.bays.get((S.order || [])[index]);
+      if (!bay) return false;
+      const { x, y } = capCenter(bay);
+      const p = bay.project;
+      if (event === 'launch') { launchFx(bay, false); return true; }
+      restartClass(bay.el, event === 'fail' ? 'just-failed' : 'just-success', 5200);
+      fx.celebrate(event, x, y, capColor(p, bay.index), { text: activeCmd(p)?.cmd, label: `${p.name} could not be deployed. The command stopped with exit code 1.` });
+      return true;
+    },
+    hold(index = 0, t = 0.9) {
+      const bay = S.bays.get((S.order || [])[index]);
+      if (!bay) return false;
+      bay.el.classList.add('is-holding');
+      bay.el.style.setProperty('--hold', String(t));
+      bay.el.classList.toggle('redline', t > 0.82);
+      bay.refs.leds.forEach((led, i) => led.classList.toggle('charge', i < t * LEDS));
+      if (readoutStyle() === 'terminal') bay.refs.status.textContent = scramble(bay.project.name, t);
+      return true;
+    },
+    openLog,
+  };
+}
+
 // ---------------------------------------------------------------- boot
 setInterval(() => { for (const bay of S.bays.values()) updateLcd(bay); if (S.drawer.open) { const r = S.latest[S.drawer.projectId]; if (r && ACTIVE.has(r.status)) renderDrawerHead(); } }, 1000);
 

@@ -1,0 +1,160 @@
+{
+  "format": 1,
+  "id": "dev.ploink.whitespace",
+  "name": "Whitespace",
+  "version": "1.0.0",
+  "author": "Ploink",
+  "tier": "free",
+  "description": "A white page, one circle per project, one thin line of progress. A failed deploy is the only colour in the app.",
+  "surface": "light",
+  "tokens": {
+    "--chassis": "#fafafa",
+    "--chassis-top": "#fafafa",
+    "--chassis-bot": "#fafafa",
+    "--topbar-top": "#fafafa",
+    "--topbar-bot": "#fafafa",
+    "--bay-top": "#fafafa",
+    "--bay-mid": "#fafafa",
+    "--bay-bot": "#fafafa",
+    "--ink": "#111111",
+    "--ink-2": "#3a3a3a",
+    "--muted": "#8a8a8a",
+    "--engrave": "#b0b0b0",
+    "--line": "#e6e6e6",
+    "--key-top": "#ffffff",
+    "--key-bot": "#fafafa",
+    "--key-hover-top": "#ffffff",
+    "--key-hover-bot": "#fafafa",
+    "--key-edge": "#c8c8c8",
+    "--thumb-top": "#ffffff",
+    "--thumb-bot": "#fafafa",
+    "--well": "#f2f2f2",
+    "--well-top": "#fafafa",
+    "--well-bot": "#fafafa",
+    "--lamp-off": "#e6e6e6",
+    "--strip": "#fafafa",
+    "--scroll": "#c8c8c8",
+    "--ring": "#c8c8c8",
+    "--socket": "#fafafa",
+    "--socket-ring": "#f2f2f2",
+    "--socket-ink": "#8a8a8a",
+    "--screw": "transparent",
+    "--screw-slot": "transparent",
+    "--hole": "#fafafa",
+    "--hole-hi": "#fafafa",
+    "--medal-1": "#ffffff",
+    "--medal-2": "#f2f2f2",
+    "--plate": "#fafafa",
+    "--plate-hi": "#fafafa",
+    "--plate-lo": "#fafafa",
+    "--vfd": "#111111",
+    "--vfd-glow": "transparent",
+    "--vfd-dim": "#8a8a8a",
+    "--lcd-1": "#fafafa",
+    "--lcd-2": "#fafafa",
+    "--led-off": "#e6e6e6",
+    "--led-trail": "#cccccc",
+    "--ok": "#111111",
+    "--bad": "#ff4f00",
+    "--warn": "#8a8a8a",
+    "--brand": "#ff4f00",
+    "--tone-ok": "#111111",
+    "--tone-bad": "#ff4f00",
+    "--tone-warn": "#8a8a8a"
+  },
+  "cap": {
+    "material": "matte",
+    "palette": [
+      "#111111"
+    ]
+  },
+  "bezel": {
+    "style": "outline"
+  },
+  "led": {
+    "style": "arc"
+  },
+  "readout": {
+    "style": "vfd"
+  },
+  "panel": {
+    "style": "plain"
+  },
+  "log": {
+    "style": "minimal"
+  },
+  "sounds": {
+    "press": [],
+    "release": [],
+    "tick": [],
+    "click": [],
+    "launch": [
+      {
+        "kind": "tone",
+        "freq": 440,
+        "type": "sine",
+        "peak": 0.05,
+        "decay": 0.3
+      }
+    ],
+    "success": [
+      {
+        "kind": "tone",
+        "freq": 880,
+        "type": "sine",
+        "peak": 0.05,
+        "decay": 0.5
+      }
+    ],
+    "fail": [
+      {
+        "kind": "tone",
+        "freq": 220,
+        "type": "sine",
+        "peak": 0.06,
+        "decay": 0.5
+      }
+    ],
+    "request": [
+      {
+        "kind": "tone",
+        "freq": 660,
+        "type": "sine",
+        "peak": 0.04,
+        "decay": 0.3
+      }
+    ],
+    "install": [
+      {
+        "kind": "tone",
+        "freq": 660,
+        "type": "sine",
+        "peak": 0.04,
+        "decay": 0.2
+      }
+    ]
+  },
+  "effects": {
+    "launch": {
+      "kind": "none"
+    },
+    "success": {
+      "kind": "flash",
+      "palette": [
+        "#8a8a8a"
+      ],
+      "size": 0.6
+    },
+    "fail": {
+      "kind": "none"
+    }
+  },
+  "words": {
+    "IGNITION": "...",
+    "IN FLIGHT": "...",
+    "SHIPPED": "OK",
+    "FAILED": "NO",
+    "ABORTED": "STOPPED",
+    "FLIGHT LOG": "LOG"
+  }
+}

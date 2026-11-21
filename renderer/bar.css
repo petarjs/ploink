@@ -333,9 +333,9 @@ body.cockpit .mini-vfd {
 .mini-vfd::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px); }
 .mini-vfd .n { display: block; font: 600 10px/1.2 var(--sans); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .mini-vfd .s { display: block; margin-top: 3px; font: 700 9px/1.1 var(--mono); letter-spacing: 0.12em; color: var(--vfd); text-shadow: 0 0 6px var(--vfd-glow); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mini-vfd.tone-ok { --vfd: #7dfcae; --vfd-glow: rgba(125, 252, 174, 0.6); }
-.mini-vfd.tone-bad { --vfd: #ff7a6e; --vfd-glow: rgba(255, 122, 110, 0.6); }
-.mini-vfd.tone-warn { --vfd: #ffc861; --vfd-glow: rgba(255, 200, 97, 0.6); }
+.mini-vfd.tone-ok { --vfd: var(--tone-ok, #7dfcae); --vfd-glow: color-mix(in srgb, var(--tone-ok, #7dfcae) 60%, transparent); }
+.mini-vfd.tone-bad { --vfd: var(--tone-bad, #ff7a6e); --vfd-glow: color-mix(in srgb, var(--tone-bad, #ff7a6e) 60%, transparent); }
+.mini-vfd.tone-warn { --vfd: var(--tone-warn, #ffc861); --vfd-glow: color-mix(in srgb, var(--tone-warn, #ffc861) 60%, transparent); }
 .mini-vfd.tone-off { --vfd: #59606a; --vfd-glow: transparent; }
 body.cockpit .ss-label { font-size: 8px; }
 body.cockpit .track { padding-bottom: 0 !important; }
