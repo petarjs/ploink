@@ -196,3 +196,63 @@ test('every built-in pack has a log style and the default keeps the flight log n
   assert.equal(mc.words['FLIGHT LOG'], undefined);
   for (const p of packs) assert.ok(BLOCKS.log.includes(p.log.style), p.id);
 });
+
+test('0.3.0 building blocks are accepted by name and fall back when unknown', () => {
+  const ok = validatePack({
+    ...base,
+    cap: { material: 'droplet' }, bezel: { style: 'dimple' }, led: { style: 'gauge' }, readout: { style: 'glyph' },
+    panel: { style: 'cells' }, log: { style: 'worksheet' },
+    effects: { launch: { kind: 'rain' }, success: { kind: 'fireflies' }, fail: { kind: 'dialogs' } },
+  });
+  assert.deepEqual(ok.warnings, []);
+  assert.equal(ok.pack.cap.material, 'droplet');
+  assert.equal(ok.pack.led.style, 'gauge');
+  assert.equal(ok.pack.effects.fail.kind, 'dialogs');
+  for (const [part, key, value, fallback] of [['cap', 'material', 'slime', 'gloss'], ['bezel', 'style', 'velvet', 'steel'], ['led', 'style', 'laser', 'dots'], ['readout', 'style', 'hologram', 'vfd'], ['panel', 'style', 'moon', 'plain'], ['log', 'style', 'scroll', 'receipt']]) {
+    const res = validatePack({ ...base, [part]: { [key]: value } });
+    assert.equal(res.pack[part][key], fallback, `${part}.${key}`);
+    assert.equal(res.warnings.length, 1);
+  }
+  assert.equal(validatePack({ ...base, effects: { fail: { kind: 'explode' } } }).pack.effects.fail.kind, 'fizzle');
+});
+
+test('surface is dark or light, and the light-surface tokens are allowed', () => {
+  assert.equal(validatePack(base).pack.surface, 'dark');
+  assert.equal(validatePack({ ...base, surface: 'light' }).pack.surface, 'light');
+  const odd = validatePack({ ...base, surface: 'sepia' });
+  assert.equal(odd.pack.surface, 'dark');
+  assert.equal(odd.warnings.length, 1);
+  const { pack, warnings } = validatePack({ ...base, tokens: { '--key-top': '#ffffff', '--well': '#f3f3f3', '--medal-1': '#fff', '--socket-ring': '#e6e6e6', '--key-face': '#000' } });
+  assert.deepEqual(Object.keys(pack.tokens), ['--key-top', '--well', '--medal-1', '--socket-ring']);
+  assert.equal(warnings.length, 1);
+});
+
+test('cap.shape: one name, or a list used in turn; unknown names are skipped', () => {
+  assert.equal(validatePack({ ...base, cap: { shape: 'square' } }).pack.cap.shape, 'square');
+  assert.deepEqual(validatePack({ ...base, cap: { shape: ['sphere', 'cube', 'blob', 'torus'] } }).pack.cap.shape, ['sphere', 'cube', 'torus']);
+  assert.equal(validatePack({ ...base, cap: { shape: 'pyramid' } }).pack.cap.shape, undefined);
+  assert.equal(validatePack({ ...base, cap: { shape: Array(20).fill('cube') } }).pack.cap.shape.length, 8);
+  assert.equal(validatePack(base).pack.cap.shape, undefined, 'no shape means the user setting decides');
+});
+
+test('quips: known events, plain text up to 60 characters, optional days, hours and chance', () => {
+  const { pack, warnings } = validatePack({
+    ...base,
+    quips: [
+      { on: 'fail', text: 'EXPLAIN IT TO ME. SLOWLY.' },
+      { on: 'hold', text: 'THE SPIRITS SAY NO. HOLD ANYWAY?', days: [5, 5, 7, -1], hours: [16, 18], chance: 2 },
+      { on: 'hold', text: 'x', hours: [18, 16] },
+      { on: 'boot', text: 'hello' },
+      { on: 'success', text: '<script>\u0000' },
+      { on: 'success', text: 'y'.repeat(200) },
+      'nope',
+    ],
+  });
+  assert.deepEqual(pack.quips[0], { on: 'fail', text: 'EXPLAIN IT TO ME. SLOWLY.' });
+  assert.deepEqual(pack.quips[1], { on: 'hold', text: 'THE SPIRITS SAY NO. HOLD ANYWAY?', days: [5], hours: [16, 18], chance: 1 });
+  assert.deepEqual(pack.quips[2], { on: 'hold', text: 'x' }, 'backwards hours are dropped');
+  assert.equal(pack.quips.find((q) => q.on === 'success' && q.text.length === 60).text.length, 60, 'long text is cut to 60');
+  assert.equal(pack.quips.length, 5);
+  assert.equal(warnings.length, 2, 'unknown event and a non-object');
+  assert.equal(validatePack({ ...base, quips: 'hi' }).pack.quips, undefined);
+});

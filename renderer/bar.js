@@ -2,7 +2,7 @@
 import { h, capVars, colorFromName, monogram, ago, clock, dur, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
-import { applyPack, capColor, word } from './look.js';
+import { applyPack, capColor, capShape, packOutline, readoutStyle, glyphText, word } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
 const $ = (sel) => document.querySelector(sel);
@@ -43,7 +43,7 @@ function applyLayout(layout) {
 }
 
 function applyLook() {
-  const shape = S.settings.buttonShape === 'square' ? 'square' : 'round';
+  const shape = packOutline() || (S.settings.buttonShape === 'square' ? 'square' : 'round');
   body.classList.toggle('shape-square', shape === 'square');
   body.classList.toggle('labels', S.settings.barLabels !== false);
   body.style.setProperty('--icon-scale', String(S.settings.iconScale ?? 0.5));
@@ -289,6 +289,8 @@ function updateCap(cap) {
   const { vars, tone } = capVars(capColor(p, cap.index));
   for (const [k, v] of Object.entries(vars)) cap.el.style.setProperty(k, v);
   cap.el.dataset.tone = tone;
+  const solid = capShape(cap.index);
+  if (solid && solid !== 'round' && solid !== 'square') cap.el.dataset.shape = solid; else delete cap.el.dataset.shape;
   const sig = (p.icon || '').slice(-48) + p.name;
   if (cap.face.dataset.sig !== sig) { cap.face.dataset.sig = sig; cap.face.replaceChildren(medal(p)); }
   cap.key.textContent = cap.index < 9 ? String(cap.index + 1) : cap.index === 9 ? '0' : '';
@@ -318,7 +320,11 @@ function updateVfd(cap) {
   const cls = `mini-vfd${tone ? ' tone-' + tone : ''}`;
   if (cap.vfd.className !== cls) cap.vfd.className = cls;
   if (cap.vfdName.textContent !== p.name) cap.vfdName.textContent = p.name;
-  if (cap.vfdStatus.textContent !== line) cap.vfdStatus.textContent = line;
+  const sig = readoutStyle() + line;
+  if (cap.vfdStatus.dataset.sig !== sig) {
+    cap.vfdStatus.dataset.sig = sig;
+    cap.vfdStatus.replaceChildren(readoutStyle() === 'glyph' ? glyphText(line) : line);
+  }
 }
 
 const capCenter = (cap) => {
@@ -612,11 +618,11 @@ function queueResult(projectId, status, audible) {
     const c = capCenter(cap);
     if (status === 'success') {
       restartClass(cap.el, 'just-success', 5200);
-      fx.celebrate('success', c.x, c.y, capColor(cap.project, cap.index));
+      fx.celebrate('success', c.x, c.y, capColor(cap.project, cap.index), { text: S.latest[projectId]?.cmd });
       if (audible) sfx.success();
     } else {
       restartClass(cap.el, 'just-failed', 2200);
-      fx.celebrate('fail', c.x, c.y);
+      fx.celebrate('fail', c.x, c.y, null, { text: S.latest[projectId]?.cmd, label: `${cap.project.name} could not be deployed.` });
       if (audible) sfx.fail();
     }
   };
@@ -764,7 +770,7 @@ api.on((evt) => {
       break;
     }
     case 'settings': S.settings = evt.settings; configureAudio(S.settings); applyLook(); renderGauges(); break;
-    case 'look': applyPack(evt.look?.pack); render(); break;
+    case 'look': applyPack(evt.look?.pack); applyLook(); render(); break;
     case 'bar:layout': applyLayout(evt.layout); render(); applyLook(); renderGauges(); break;
     case 'usage': S.usage = evt.usage; renderGauges(); break;
     case 'bar:show':

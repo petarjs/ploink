@@ -1,7 +1,7 @@
 import { h, capVars, colorFromIcon, colorFromName, monogram, ansiToHtml, ago, clock, dur, hostOf, CAP_COLORS, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
-import { applyPack, capColor, word, previewVars } from './look.js';
+import { applyPack, capColor, capShape, packOutline, readoutStyle, logStyle, quip, scramble, glyphText, specimenSvg, specimenName, word, previewVars } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -79,7 +79,7 @@ function toast(message, tone = 'info', ms = 3400) {
 
 // ---------------------------------------------------------------- look (shape, icon size)
 function applyLook() {
-  const shape = S.settings.buttonShape === 'square' ? 'square' : 'round';
+  const shape = packOutline() || (S.settings.buttonShape === 'square' ? 'square' : 'round');
   document.body.classList.toggle('shape-square', shape === 'square');
   document.body.style.setProperty('--icon-scale', String(S.settings.iconScale ?? 0.5));
   for (const bay of S.bays.values()) placeLeds(bay.refs.leds, shape, 92);
@@ -184,7 +184,7 @@ function createBay(p) {
       ),
     ),
     (refs.assembly = h('div', { class: 'assembly' },
-      h('div', { class: 'ring' }, refs.leds),
+      h('div', { class: 'ring' }, refs.leds, h('i', { class: 'needle' })),
       h('div', { class: 'bezel' }),
       (refs.cap = h('button', { class: 'cap' },
         h('span', { class: 'cap-shadow' }),
@@ -252,6 +252,8 @@ function updateBay(bay) {
   const { vars, tone } = capVars(capColor(p, bay.index));
   for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
   el.dataset.tone = tone;
+  const solid = capShape(bay.index);
+  if (solid && solid !== 'round' && solid !== 'square') el.dataset.shape = solid; else delete el.dataset.shape;
   refs.num.textContent = String(bay.index + 1).padStart(2, '0');
   el.style.setProperty('--i', bay.index);
   refs.cap.setAttribute('aria-label', `Deploy ${p.name}. Press and hold.`);
@@ -621,25 +623,29 @@ function updateLcd(bay) {
       o = { ...o, ...d };
     }
     refs.lcd.className = `lcd ${o.tone ? 'tone-' + o.tone : ''}`;
-    refs.status.textContent = word(o.status);
+    const glyph = readoutStyle() === 'glyph';
+    refs.status.replaceChildren(glyph ? glyphText(word(o.status)) : word(o.status));
     refs.status.dataset.s = '';
     refs.side.textContent = o.side || '';
-    refs.ticker.textContent = o.ticker || '';
+    refs.ticker.replaceChildren(glyph && o.ticker ? glyphText(o.ticker) : o.ticker || '');
+    refs.ticker.dataset.k = '';
     return;
   }
   const d = lcdFor(bay.project, S.latest[bay.project.id]);
   d.status = word(d.status);
   const cls = `lcd ${d.tone ? 'tone-' + d.tone : ''}`;
   if (refs.lcd.className !== cls) refs.lcd.className = cls;
+  const glyph = readoutStyle() === 'glyph';
   if (refs.status.dataset.s !== d.status + !!d.live) {
     refs.status.dataset.s = d.status + !!d.live;
-    refs.status.replaceChildren(d.status, ...(d.live ? [h('i', { class: 'dot' })] : []));
+    refs.status.replaceChildren(glyph ? glyphText(d.status) : d.status, ...(d.live ? [h('i', { class: 'dot' })] : []));
+    if (readoutStyle() === 'terminal') restartClass(refs.status, 'typed');
   }
   if (refs.side.textContent !== d.side) refs.side.textContent = d.side;
   const tickerKey = (d.badge || '') + d.ticker;
   if (refs.ticker.dataset.k !== tickerKey) {
     refs.ticker.dataset.k = tickerKey;
-    refs.ticker.replaceChildren(...(d.badge ? [h('span', { class: 'lcd-badge' }, d.badge)] : []), d.ticker);
+    refs.ticker.replaceChildren(...(d.badge ? [h('span', { class: 'lcd-badge' }, d.badge)] : []), glyph ? glyphText(d.ticker) : d.ticker);
   }
 }
 
@@ -663,7 +669,8 @@ function beginHold(bay, via) {
   sfx.press();
   bay.el.classList.add('is-holding');
   const holdMs = Math.max(0, Number(S.settings.holdMs ?? 650));
-  const state = { bay, via, start: performance.now(), lit: 0, fired: false, raf: 0, awaitingRunId: awaiting ? run.id : null };
+  const state = { bay, via, start: performance.now(), lit: 0, fired: false, raf: 0, awaitingRunId: awaiting ? run.id : null, quip: quip('hold') };
+  if (state.quip) { bay.refs.ticker.textContent = state.quip; bay.refs.ticker.dataset.k = ''; }
   S.holding = state;
   if (holdMs < 40) { fire(state); return; }
   // a timer owns the deadline so a throttled frame loop can never stall a launch
@@ -678,6 +685,9 @@ function beginHold(bay, via) {
       state.lit++;
     }
     bay.el.style.setProperty('--hold', t.toFixed(3));
+    bay.el.classList.toggle('redline', t > 0.82);
+    // the terminal readout brute-forces the project name while you hold
+    if (readoutStyle() === 'terminal') { bay.refs.status.textContent = scramble(p.name, t * 1.15); bay.refs.status.dataset.s = ''; }
     state.raf = requestAnimationFrame(step);
   };
   state.raf = requestAnimationFrame(step);
@@ -690,8 +700,9 @@ function endHold() {
   cancelAnimationFrame(state.raf);
   clearTimeout(state.timer);
   const { bay } = state;
-  bay.el.classList.remove('is-holding');
+  bay.el.classList.remove('is-holding', 'redline');
   bay.el.style.setProperty('--hold', 0);
+  if (state.quip || readoutStyle() === 'terminal') { bay.refs.status.dataset.s = ''; bay.refs.ticker.dataset.k = ''; updateLcd(bay); }
   if (!state.fired) {
     sfx.release();
     drainLeds(bay);
@@ -747,8 +758,18 @@ function launchFx(bay, audible = true) {
   bay.firedAt = Date.now();
   const { x, y } = capCenter(bay);
   restartClass(bay.el, 'launch', 650);
-  fx.celebrate('launch', x, y, capColor(bay.project, bay.index));
+  bay.el.classList.remove('redline');
+  fx.celebrate('launch', x, y, capColor(bay.project, bay.index), { text: activeCmd(bay.project)?.cmd });
   if (audible) sfx.launch();
+  quipOn(bay, 'launch');
+}
+
+// a pack quip in the bay's ticker for a few seconds
+function quipOn(bay, on) {
+  const q = quip(on);
+  if (!q) return;
+  const d = lcdFor(bay.project, S.latest[bay.project.id]);
+  setTimeout(() => flashLcd(bay, { ...d, ticker: q }, 7000), on === 'launch' ? 400 : 120);
 }
 
 function ghostPress(bay, audible = true) {
@@ -801,13 +822,15 @@ function transition(bay, prevStatus, run) {
   } else if (s === 'success' && prevStatus) {
     restartClass(bay.el, 'just-success', 5200);
     const { x, y } = capCenter(bay);
-    fx.celebrate('success', x, y, capColor(bay.project, bay.index));
+    fx.celebrate('success', x, y, capColor(bay.project, bay.index), { text: run.cmd });
     if (audible) sfx.success();
+    quipOn(bay, 'success');
   } else if (s === 'failed' && prevStatus) {
     restartClass(bay.el, 'just-failed', 2200);
     const { x, y } = capCenter(bay);
-    fx.celebrate('fail', x, y);
+    fx.celebrate('fail', x, y, null, { text: run.cmd, label: `${bay.project.name} could not be deployed. The command stopped with exit code ${run.exitCode ?? '?'}.` });
     if (audible) sfx.fail();
+    quipOn(bay, 'fail');
   } else if ((s === 'denied' || s === 'expired') && prevStatus) {
     if (audible) sfx.denied();
   }
@@ -1115,11 +1138,47 @@ function updateLogWords() {
   for (const b of LOG.filters) b.textContent = word(b.dataset.word);
 }
 
+// tabloid headlines for the newspaper log, written from real events
+function headline(e) {
+  const P = String(e.projectName || 'Project').toUpperCase();
+  const secsTaken = e.durationMs != null ? Math.round(e.durationMs / 1000) : null;
+  const took = secsTaken == null ? '' : secsTaken >= 90 ? ` IN ${Math.round(secsTaken / 60)} MINUTES` : ` IN ${secsTaken} SECONDS`;
+  if (e.kind && e.kind !== 'deploy') {
+    const K = String(e.command || 'key').toUpperCase();
+    if (e.type === 'failed') return `${P} ${K} FAILS${e.value ? `: ${String(e.value).toUpperCase()}` : ''}`;
+    if (e.type === 'succeeded') return `${P} ${K} ${e.kind === 'check' ? `READS ${String(e.value || 'OK').toUpperCase()}` : 'DONE'}`;
+    return `${P} ${K} ${String(e.type).toUpperCase()}`;
+  }
+  switch (e.type) {
+    case 'succeeded': return e.source === 'agent' ? `AGENT DEPLOYS ${P}; OWNER 'AT LUNCH'` : `${P} SHIPS${took}`;
+    case 'failed': return `${P} DEPLOY COLLAPSES; EXIT ${e.exitCode ?? '?'}`;
+    case 'started': return e.source === 'agent' ? `AGENT TAKES THE WHEEL AT ${P}` : `${P} GOES TO PRESS`;
+    case 'cancelled': return `${P} DEPLOY PULLED AT THE LAST MINUTE`;
+    case 'requested': return `AGENT ASKS TO DEPLOY ${P}`;
+    case 'approved': return `OWNER APPROVES ${P} DEPLOY`;
+    case 'denied': return `${P} REQUEST DENIED`;
+    case 'expired': return `${P} REQUEST GOES UNANSWERED`;
+    case 'added': return `${P} JOINS THE DECK`;
+    case 'removed': return `${P} LEAVES THE DECK`;
+    default: return `${P}: ${String(e.type).toUpperCase()}`;
+  }
+}
+
+const isDeploy = (e) => !e.kind || e.kind === 'deploy';
+const titleCase = (s) => String(s).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
 function renderLog() {
   if (!LOG.built) return;
   for (const b of LOG.filters) b.classList.toggle('active', b.dataset.v === LOG.filter);
   const items = LOG.items.filter((e) => LOG.filter === 'all' || (LOG.filter === 'failed' ? e.type === 'failed' : e.source === 'agent'));
-  const out = [h('div', { class: 'paper-head' }, `PLOINK · ${S.projects.length} BAYS · ${new Date().toLocaleDateString()}`)];
+  const style = logStyle();
+  const deploys = LOG.items.filter((e) => isDeploy(e) && e.type === 'started').length;
+  const out = [];
+  if (style === 'newspaper') {
+    out.push(h('div', { class: 'masthead' }, h('h3', {}, `The ${titleCase(word('FLIGHT LOG'))}`),
+      h('div', {}, h('span', {}, `VOL. ${deploys}`), h('span', {}, new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()), h('span', {}, 'ONE HOLD'))));
+  }
+  out.push(h('div', { class: 'paper-head' }, style === 'window' ? [h('span', {}, 'Time'), h('span', {}), h('span', {}, 'Event')] : `PLOINK · ${S.projects.length} BAYS · ${new Date().toLocaleDateString()}`));
   if (!items.length) out.push(h('div', { class: 'paper-empty' }, LOG.items.length ? 'Nothing matches this filter.' : 'No activity yet. Hold a button.'));
   let day = '';
   for (const e of items.slice(0, 300)) {
@@ -1128,18 +1187,43 @@ function renderLog() {
     const d = describe(e);
     const project = S.projects.find((p) => p.id === e.projectId);
     const go = !!(e.runId && project);
-    const sub = d.sub.filter(Boolean).join(' · ');
+    const parts = d.sub.filter(Boolean).map((x) => (style === 'dossier' && x === 'by agent' ? h('span', { class: 'redact', title: 'Hover to declassify' }, 'by agent') : x));
+    const sub = parts.flatMap((x, i) => (i ? [' · ', x] : [x]));
+    const agentSlip = style === 'slips' && e.source === 'agent';
+    let what = d.what;
+    if (style === 'newspaper') what = [headline(e)];
+    else if (agentSlip) what = ['Agent called. ', ...d.what];
+    let mark = d.mark;
+    if (style === 'scene') {
+      const idx = Math.max(0, (S.order || []).indexOf(e.projectId));
+      mark = h('i', { class: 'shape-icon', 'data-s': capShape(idx) || 'cube', vars: { '--c': project ? capColor(project, idx) : '#4dabf7' } });
+    }
     out.push(h('div', {
       class: `entry ${d.tone}${go ? ' go' : ''}${LOG.fresh.has(e.id) ? ' fresh' : ''}`,
       title: go ? 'Open this deploy log' : '',
       onclick: go ? () => { closeLog(); openDrawer(e.projectId, e.runId); } : null,
     },
+      agentSlip ? h('div', { class: 'wywo' }, 'WHILE YOU WERE OUT', h('span', { class: `urgent${e.type === 'failed' ? ' on' : ''}` }, 'URGENT')) : null,
       h('time', {}, hhmm(e.at)),
-      h('span', { class: 'mark' }, d.mark),
-      h('span', { class: 'what' }, ...d.what),
-      sub ? h('span', { class: 'sub' }, sub) : null,
+      h('span', { class: 'mark' }, mark),
+      h('span', { class: 'what' }, ...what),
+      sub.length ? h('span', { class: 'sub' }, ...sub) : null,
+      style === 'pinboard' && e.type === 'failed' ? h('div', { class: 'specimen-card' },
+        h('span', { html: specimenSvg(e.id || e.runId || e.at) }),
+        h('span', { class: 'latin' }, specimenName(e.projectName, e.exitCode, e.id || e.at),
+          h('small', {}, `${e.projectName || 'Project'} · exit ${e.exitCode ?? '?'} · ${new Date(e.at).toLocaleDateString()}`))) : null,
     ));
   }
+  if (style === 'worksheet') {
+    const done = LOG.items.filter((e) => isDeploy(e) && e.type === 'succeeded');
+    const failed = LOG.items.filter((e) => isDeploy(e) && e.type === 'failed').length;
+    const avg = done.length ? Math.round(done.reduce((n, e) => n + (e.durationMs || 0), 0) / done.length / 1000) : 0;
+    out.push(h('div', { class: 'sheet-foot' },
+      h('div', { class: 'sheet-tabs' }, [['all', 'ALL'], ['failed', 'FAILED'], ['agent', 'AGENT']].map(([v, label]) =>
+        h('button', { class: LOG.filter === v ? 'active' : '', onclick: () => { LOG.filter = v; sfx.click(); renderLog(); } }, titleCase(word(label))))),
+      h('div', { class: 'sheet-status' }, h('span', {}, `SUM: ${done.length} shipped`), h('span', {}, `AVERAGE: ${avg}s`), h('span', {}, `COUNT(failed): ${failed}`))));
+  }
+  if (style === 'guestbook') out.push(h('div', { class: 'hit-counter' }, 'You are deploy no.', h('b', {}, String(deploys).padStart(6, '0'))));
   LOG.paper.replaceChildren(...out);
   LOG.fresh.clear();
 }
@@ -1773,7 +1857,8 @@ function setLook(look) {
 }
 
 function restyleBays() {
-  for (const bay of S.bays.values()) updateBay(bay);
+  applyLook();
+  for (const bay of S.bays.values()) { bay.refs.status.dataset.s = ''; bay.refs.ticker.dataset.k = ''; updateBay(bay); }
   updateLamps();
   updateLogWords();
 }

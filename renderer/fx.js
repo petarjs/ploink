@@ -115,6 +115,51 @@ function loop() {
       g.beginPath();
       g.arc(p.x, p.y, r, 0, Math.PI * 2);
       g.fill();
+    } else if (p.kind === 'rain') {
+      // a column of characters: a bright head and a fading tail
+      g.globalCompositeOperation = 'source-over';
+      g.font = '600 13px ui-monospace, Menlo, monospace';
+      const fade = k > 0.85 ? (1 - k) / 0.15 : 1;
+      for (let j = 0; j < p.tail; j++) {
+        const ch = p.text[(p.seed + j + ((p.t / 3) | 0)) % p.text.length];
+        g.globalAlpha = Math.max(0, (j === 0 ? 1 : 0.75 * (1 - j / p.tail)) * fade);
+        g.fillStyle = j === 0 ? p.head : p.color;
+        g.fillText(ch, p.x, p.y - j * 15);
+      }
+    } else if (p.kind === 'bar') {
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = (1 - k) * 0.7;
+      g.fillStyle = p.color;
+      g.fillRect(0, p.y, W, p.size);
+    } else if (p.kind === 'firefly' || p.kind === 'spore') {
+      g.globalCompositeOperation = 'lighter';
+      const tw = p.kind === 'firefly' ? 0.35 + 0.65 * Math.abs(Math.sin((p.t + p.phase) * 0.06)) : 1;
+      g.globalAlpha = Math.max(0, tw * Math.min(1, p.t / 15) * (k > 0.75 ? (1 - k) / 0.25 : 1));
+      const grd = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 4);
+      grd.addColorStop(0, p.color);
+      grd.addColorStop(0.25, p.color);
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grd;
+      g.beginPath();
+      g.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
+      g.fill();
+      if (p.kind === 'firefly') { p.vx += rand(-0.12, 0.12); p.vy += rand(-0.1, 0.08); }
+    } else if (p.kind === 'bubble') {
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = Math.min(1, p.t / 10) * 0.9;
+      g.strokeStyle = p.color;
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.18)';
+      g.fill();
+      g.globalAlpha *= 0.9;
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.arc(p.x - p.size * 0.35, p.y - p.size * 0.35, p.size * 0.22, 0, Math.PI * 2);
+      g.fill();
+      if (p.t >= p.life - 1) shockwave(p.x, p.y, p.color, { r0: p.size, r1: p.size * 2.2, life: 10, w: 1.5, alpha: 0.8 });
     } else if (p.kind === 'lamp') {
       // runway lights: each lamp flashes once as the sweep passes
       g.globalCompositeOperation = 'lighter';
@@ -302,6 +347,95 @@ export function runway(x, y, palette, size = 1) {
   kick();
 }
 
+// the deploy command's own characters falling in columns
+export function rain(text, palette) {
+  if (reduce) return;
+  const chars = String(text || 'ploink deploy').replace(/\s+/g, ' ');
+  const colors = palette?.length ? palette : ['#00ff66', '#0aff9d'];
+  const cols = Math.min(60, Math.floor(W / 18));
+  for (let c = 0; c < cols; c++) {
+    if (Math.random() < 0.25) continue;
+    const speed = rand(5, 11);
+    parts.push({ kind: 'rain', x: c * 18 + 4, y: rand(-H * 0.6, 0), vx: 0, vy: speed, drag: 1, grav: 0, tail: 8 + ((Math.random() * 10) | 0), text: chars, seed: (Math.random() * chars.length) | 0, life: (H + 300) / speed, t: 0, color: colors[c % colors.length], head: '#e9ffef' });
+  }
+  kick();
+}
+
+// a column of steam that rolls up from the button
+export function steam(x, y, palette, size = 1) {
+  if (reduce) return;
+  const color = palette?.[0] || 'rgba(235,235,230,0.95)';
+  for (let i = 0; i < 34; i++) {
+    const a = rand(-Math.PI * 0.75, -Math.PI * 0.25);
+    const s = rand(1.5, 4) * size;
+    parts.push({ kind: 'smoke', x: x + rand(-30, 30), y: y - 30, vx: Math.cos(a) * s, vy: Math.sin(a) * s, drag: 0.97, grav: -0.03, size: rand(14, 26) * size, life: rand(60, 110), t: -i * 0.6, alpha: rand(0.25, 0.45), color });
+  }
+  shockwave(x, y, 'rgba(255,255,255,0.7)', { r0: 60, r1: 170, life: 26, w: 3, alpha: 0.6 });
+  kick();
+}
+
+// the whole console RGB-splits and tears for a third of a second
+export function glitch(palette) {
+  if (reduce) return;
+  const root = document.documentElement;
+  root.classList.remove('glitching');
+  void root.offsetWidth;
+  root.classList.add('glitching');
+  setTimeout(() => root.classList.remove('glitching'), 360);
+  const colors = palette?.length ? palette : ['#ff2a5f', '#19e6ff', '#f5e90b'];
+  for (let i = 0; i < 9; i++) parts.push({ kind: 'bar', x: 0, y: rand(0, H), vx: 0, vy: 0, drag: 1, grav: 0, size: rand(3, 22), life: rand(6, 16), t: -((Math.random() * 8) | 0), color: colors[i % colors.length] });
+  kick();
+}
+
+// error dialogs with one OK button; several failures cascade across the console
+let dialogN = 0;
+export function dialogs(x, y, label) {
+  const n = dialogN++ % 8;
+  const box = document.createElement('div');
+  box.className = 'fx-dialog';
+  const left = Math.max(12, Math.min(W - 300, x - 140 + n * 26));
+  const top = Math.max(70, Math.min(H - 150, y - 70 + n * 26));
+  box.style.left = `${left}px`;
+  box.style.top = `${top}px`;
+  box.innerHTML = '<div class="fxd-title"><span>Deploy</span><i></i></div><div class="fxd-body"><b class="fxd-icon">!</b><span class="fxd-text"></span></div><div class="fxd-foot"><button type="button">OK</button></div>';
+  box.querySelector('.fxd-text').textContent = label || 'The deploy did not finish.';
+  const close = () => { box.classList.add('out'); setTimeout(() => box.remove(), 200); };
+  box.querySelector('button').addEventListener('click', close);
+  box.querySelector('.fxd-title i').addEventListener('click', close);
+  document.body.append(box);
+  setTimeout(close, 15000);
+}
+
+// glowing spores that rise and drift (snow in reverse)
+export function spores(x, y, palette, count = 70) {
+  if (reduce) return;
+  const colors = palette?.length ? palette : ['#39ffd0', '#a66bff', '#e8ff6a'];
+  for (let i = 0; i < count; i++) {
+    parts.push({ kind: 'spore', x: x + rand(-80, 80), y: y + rand(-20, 40), vx: rand(-0.5, 0.5), vy: rand(-2.2, -0.6), drag: 0.995, grav: -0.004, sway: rand(0.004, 0.015), phase: rand(0, 200), size: rand(1, 2.4), life: rand(140, 240), t: 0, color: colors[i % colors.length] });
+  }
+  kick();
+}
+
+// fireflies that wander off from the jar
+export function fireflies(x, y, palette, count = 26) {
+  if (reduce) return;
+  const colors = palette?.length ? palette : ['#ffe58a', '#e9c46a'];
+  for (let i = 0; i < count; i++) {
+    parts.push({ kind: 'firefly', x: x + rand(-30, 30), y: y + rand(-30, 30), vx: rand(-1.2, 1.2), vy: rand(-1.4, 0.2), drag: 0.985, grav: 0, phase: rand(0, 100), size: rand(1.2, 2.2), life: rand(220, 340), t: -i * 2, color: colors[i % colors.length] });
+  }
+  kick();
+}
+
+// bubbles that rise, wobble and pop
+export function bubbles(x, y, palette, count = 28) {
+  if (reduce) return;
+  const colors = palette?.length ? palette : ['#7fd8e6', '#ffffff', '#f7a8c4'];
+  for (let i = 0; i < count; i++) {
+    parts.push({ kind: 'bubble', x: x + rand(-50, 50), y: y + rand(0, 40), vx: 0, vy: rand(-2.6, -1), drag: 0.99, grav: -0.01, sway: rand(0.02, 0.05), phase: rand(0, 100), size: rand(4, 11), life: rand(50, 110), t: -i * 2, color: colors[i % colors.length] });
+  }
+  kick();
+}
+
 // ---------------------------------------------------------------- dispatch by pack
 let packEffects = {};
 export function setEffects(effects) { packEffects = effects && typeof effects === 'object' ? effects : {}; }
@@ -310,7 +444,7 @@ export function setEffects(effects) { packEffects = effects && typeof effects ==
  * Play the effect for 'launch', 'success' or 'fail' at a button. The pack decides which one;
  * without a pack: ignite on launch, confetti on success, fizzle on failure.
  */
-export function celebrate(event, x, y, accent, { radius = 62 } = {}) {
+export function celebrate(event, x, y, accent, { radius = 62, text = '', label = '' } = {}) {
   const e = packEffects[event] || {};
   const kind = e.kind || (event === 'launch' ? 'ignite' : event === 'fail' ? 'fizzle' : 'confetti');
   const pal = e.palette;
@@ -326,6 +460,13 @@ export function celebrate(event, x, y, accent, { radius = 62 } = {}) {
     case 'goal': return goal(x, y, pal, size);
     case 'runway': return runway(x, y, pal, size);
     case 'fizzle': return fizzle(x, y, pal);
+    case 'rain': return rain(text, pal);
+    case 'steam': return steam(x, y, pal, size);
+    case 'glitch': return glitch(pal);
+    case 'dialogs': return dialogs(x, y, label);
+    case 'spores': return spores(x, y, pal, e.count);
+    case 'fireflies': return fireflies(x, y, pal, e.count);
+    case 'bubbles': return bubbles(x, y, pal, e.count);
     default: return event === 'fail' ? fizzle(x, y) : confetti(x, y, accent);
   }
 }

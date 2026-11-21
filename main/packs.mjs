@@ -11,13 +11,15 @@ export const DEFAULT_PACK_ID = 'dev.ploink.mission-control';
 const OFFICIAL_PREFIX = 'dev.ploink.';
 
 export const BLOCKS = {
-  material: ['gloss', 'concave', 'matte', 'glass', 'metal', 'puck', 'ornament'],
-  bezel: ['steel', 'black', 'brass', 'chrome', 'neon'],
-  led: ['dots', 'segments', 'comet', 'bulbs'],
-  readout: ['vfd', 'seven-seg', 'dot-matrix', 'backlit'],
-  panel: ['plain', 'wood', 'grid', 'scanlines', 'rink', 'frost', 'hazard'],
-  log: ['receipt', 'terminal', 'ledger', 'parchment', 'jcard', 'scoresheet'],
-  effect: ['confetti', 'pixels', 'sweep', 'flash', 'snow', 'goal', 'runway', 'fizzle', 'ignite', 'none'],
+  material: ['gloss', 'concave', 'matte', 'glass', 'metal', 'puck', 'ornament', 'flat', 'droplet', 'clay', 'membrane', 'sewn', 'duck'],
+  shape: ['round', 'square', 'sphere', 'cube', 'cylinder', 'cone', 'torus', 'icosahedron'],
+  bezel: ['steel', 'black', 'brass', 'chrome', 'neon', 'outline', 'bevel', 'dimple'],
+  led: ['dots', 'segments', 'comet', 'bulbs', 'gauge', 'arc', 'orbit'],
+  readout: ['vfd', 'seven-seg', 'dot-matrix', 'backlit', 'terminal', 'frosted', 'marquee', 'glyph', 'crt'],
+  panel: ['plain', 'wood', 'grid', 'scanlines', 'rink', 'frost', 'hazard', 'cells', 'aurora', 'hud', 'starfield', 'window', 'studio', 'linen', 'tiles'],
+  log: ['receipt', 'terminal', 'ledger', 'parchment', 'jcard', 'scoresheet', 'worksheet', 'frosted', 'card', 'dispatch', 'hud', 'minimal', 'guestbook', 'window', 'clay', 'membrane', 'scene', 'dossier', 'sampler', 'pinboard', 'newspaper', 'slips', 'mirror', 'tarot'],
+  surface: ['dark', 'light'],
+  effect: ['confetti', 'pixels', 'sweep', 'flash', 'snow', 'goal', 'runway', 'fizzle', 'ignite', 'rain', 'steam', 'glitch', 'dialogs', 'spores', 'fireflies', 'bubbles', 'none'],
   wave: ['sine', 'square', 'sawtooth', 'triangle'],
   filter: ['lowpass', 'highpass', 'bandpass'],
 };
@@ -32,11 +34,19 @@ export const WORD_KEYS = ['READY', 'IGNITION', 'IN FLIGHT', 'SHIPPED', 'FAILED',
 // CSS custom properties a pack may set. Every default lives in styles.css / bar.css.
 export const TOKENS = [
   '--chassis', '--chassis-top', '--chassis-bot', '--topbar-top', '--topbar-bot',
-  '--plate', '--plate-hi', '--plate-lo', '--hole', '--line',
+  '--plate', '--plate-hi', '--plate-lo', '--hole', '--hole-hi', '--line',
   '--ink', '--ink-2', '--muted', '--engrave',
   '--vfd', '--vfd-glow', '--vfd-dim', '--ok', '--bad', '--warn', '--brand', '--brand-lo',
-  '--bay-top', '--bay-mid', '--bay-bot', '--led-off', '--lcd-1', '--lcd-2', '--screw',
+  '--bay-top', '--bay-mid', '--bay-bot', '--led-off', '--led-trail', '--lcd-1', '--lcd-2', '--screw', '--screw-slot',
+  // surfaces that light packs repaint (all default to the classic dark values)
+  '--key-top', '--key-bot', '--key-hover-top', '--key-hover-bot', '--key-edge', '--thumb-top', '--thumb-bot',
+  '--well', '--well-top', '--well-bot', '--lamp-off', '--strip', '--scroll', '--ring',
+  '--socket', '--socket-ring', '--socket-ink', '--medal-1', '--medal-2',
 ];
+
+// Ticker lines a pack can add ("quips"), shown on a bay when something happens.
+export const QUIP_EVENTS = ['hold', 'launch', 'success', 'fail'];
+const QUIP_RE = /^[\x20-\x7e\u00a0-\u024f\u2018-\u201d\u2026]{1,60}$/;
 
 const COLOR_RE = /^(#[0-9a-f]{3,8}|(rgb|rgba|hsl|hsla)\(\s*[-\d.%\s,/]+\)|transparent)$/i;
 const LENGTH_RE = /^-?\d{1,4}(\.\d{1,3})?(px|%|em|rem)$/;
@@ -55,7 +65,7 @@ const round = (v) => Math.round(v * 10000) / 10000;
 function pick(value, allowed, fallback, warn, what) {
   if (value === undefined || value === null) return fallback;
   if (allowed.includes(value)) return value;
-  warn(`Unknown ${what} "${String(value).slice(0, 30)}", using "${fallback}".`);
+  warn(fallback === null ? `Unknown ${what} "${String(value).slice(0, 30)}", skipped.` : `Unknown ${what} "${String(value).slice(0, 30)}", using "${fallback}".`);
   return fallback;
 }
 
@@ -133,6 +143,7 @@ export function validatePack(input) {
     readout: { style: 'vfd' },
     panel: { style: 'plain' },
     log: { style: 'receipt' },
+    surface: 'dark',
     sounds: {},
     effects: {},
     words: {},
@@ -151,6 +162,15 @@ export function validatePack(input) {
 
   const part = (key) => (input[key] && typeof input[key] === 'object' && !Array.isArray(input[key]) ? input[key] : {});
   pack.cap.material = pick(part('cap').material, BLOCKS.material, 'gloss', warn, 'cap material');
+  // shape: one name, or a list used in turn per project (like the palette)
+  const shape = part('cap').shape;
+  if (Array.isArray(shape)) {
+    const list = shape.slice(0, 8).map((x) => pick(x, BLOCKS.shape, null, warn, 'cap shape')).filter(Boolean);
+    if (list.length) pack.cap.shape = list;
+  } else if (shape !== undefined) {
+    const one = pick(shape, BLOCKS.shape, null, warn, 'cap shape');
+    if (one) pack.cap.shape = one;
+  }
   // cap colours feed the same maths as project colours, which needs #rrggbb
   const capPal = palette(part('cap').palette, 6, warn, 'cap.palette (use #rrggbb)', (c) => HEX6_RE.test(c));
   if (capPal) pack.cap.palette = capPal;
@@ -161,6 +181,31 @@ export function validatePack(input) {
   pack.readout.style = pick(part('readout').style, BLOCKS.readout, 'vfd', warn, 'readout style');
   pack.panel.style = pick(part('panel').style, BLOCKS.panel, 'plain', warn, 'panel style');
   pack.log.style = pick(part('log').style, BLOCKS.log, 'receipt', warn, 'log style');
+  pack.surface = pick(input.surface, BLOCKS.surface, 'dark', warn, 'surface');
+
+  if (input.quips !== undefined) {
+    if (!Array.isArray(input.quips)) warn('quips must be a list.');
+    else {
+      const quips = [];
+      for (const q of input.quips.slice(0, 40)) {
+        if (!q || typeof q !== 'object' || !QUIP_EVENTS.includes(q.on)) { warn('Each quip needs "on": hold, launch, success or fail.'); continue; }
+        const textValue = text(q.text, 60);
+        if (!QUIP_RE.test(textValue)) { warn(`A quip for ${q.on} has no text, or characters that are not allowed.`); continue; }
+        const quip = { on: q.on, text: textValue };
+        if (Array.isArray(q.days)) {
+          const days = [...new Set(q.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
+          if (days.length) quip.days = days; // 0 = Sunday, like Date.getDay()
+        }
+        if (Array.isArray(q.hours) && q.hours.length === 2 && q.hours.every((h) => Number.isInteger(h) && h >= 0 && h <= 24) && q.hours[0] < q.hours[1]) {
+          quip.hours = [q.hours[0], q.hours[1]]; // from (inclusive) to (exclusive), local time
+        }
+        if (q.chance !== undefined) quip.chance = round(clamp(num(q.chance, 1), 0, 1));
+        quips.push(quip);
+      }
+      if (input.quips.length > 40) warn('quips: kept the first 40.');
+      if (quips.length) pack.quips = quips;
+    }
+  }
 
   if (input.sounds !== undefined) {
     const sounds = part('sounds');
