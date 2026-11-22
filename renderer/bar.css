@@ -233,6 +233,11 @@ body.keyboard .mini-key { opacity: 1; }
 }
 .mini-cmd:empty { display: none; }
 .mini-cmd.dry { color: #1a1300; background: var(--tone-warn, #ffc861); }
+.mini-cmd[data-env] { color: var(--env, #d8d8d8); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--env, #d8d8d8) 45%, transparent); }
+.mini-cmd[data-env='production'] { --env: #ff7a6e; color: #1c0503; background: var(--env); box-shadow: none; }
+.mini-cmd[data-env='staging'] { --env: #7cc4ff; }
+.mini-cmd[data-env='preview'] { --env: #c9a6ff; }
+.mini-cmd[data-env='development'] { --env: #8fd6a0; }
 
 .mini-cap:hover { --travel: -1px; }
 .mini.is-holding .mini-cap { --travel: 5px; }
@@ -453,6 +458,16 @@ body.shape-square .mini.spot .mini-core::after { border-radius: 30%; }
 .bubble .vfd { margin-top: 5px; font: 700 10px/1.3 var(--mono); letter-spacing: 0.14em; color: var(--vfd); text-shadow: 0 0 6px var(--vfd-glow); display: flex; justify-content: space-between; gap: 10px; }
 .bubble .vfd span:last-child { color: rgba(116, 247, 212, 0.55); font-weight: 600; letter-spacing: 0.08em; }
 .bubble .line { margin-top: 3px; font: 10.5px/1.35 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* where a press goes: branch -> target environment */
+.bubble .where { margin-top: 6px; display: flex; align-items: center; gap: 6px; font: 600 10.5px/1 var(--mono); color: var(--ink-2, #d8d8d8); white-space: nowrap; min-width: 0; }
+.bubble .w-branch { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bubble .w-branch.detached { color: #ffc861; }
+.bubble .w-arrow { color: #6f727a; flex: none; }
+.bubble .w-env { flex: none; font: 700 9px/1 var(--mono); letter-spacing: 0.1em; padding: 3px 6px; border-radius: 5px; color: var(--env, #c8c8c8); background: color-mix(in srgb, var(--env, #c8c8c8) 14%, transparent); }
+.bubble .w-env[data-env='production'] { --env: #ff7a6e; color: #1c0503; background: var(--env); }
+.bubble .w-env[data-env='staging'] { --env: #7cc4ff; }
+.bubble .w-env[data-env='preview'] { --env: #c9a6ff; }
+.bubble .w-env[data-env='development'] { --env: #8fd6a0; }
 .bubble .hint { margin-top: 7px; font-size: 10.5px; color: #6f727a; }
 .bubble.tone-ok { --vfd: #7dfcae; --vfd-glow: rgba(125, 252, 174, 0.6); }
 .bubble.tone-bad { --vfd: #ff7a6e; --vfd-glow: rgba(255, 122, 110, 0.6); }

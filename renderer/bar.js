@@ -2,7 +2,7 @@
 import { h, capVars, colorFromName, monogram, ago, clock, dur, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
-import { commandSummary, looksLikeDryRun } from './steps.js';
+import { commandSummary, looksLikeDryRun, deployTarget } from './steps.js';
 import { applyPack, capColor, capShape, packOutline, readoutStyle, glyphText, word } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
@@ -14,6 +14,7 @@ const S = {
   projects: [],
   settings: {},
   latest: {},
+  git: {}, // projectId -> { branch } | { detached, sha } | null
   layout: null,
   shown: false,
   caps: new Map(),
@@ -299,12 +300,18 @@ function updateCap(cap) {
   cap.key.textContent = cap.index < 9 ? String(cap.index + 1) : cap.index === 9 ? '0' : '';
   if (cap.label.textContent !== p.name) cap.label.textContent = p.name;
   updateVfd(cap);
+  // the tag on the cap says where a press goes: a dry run by name, else the target
+  // environment (PROD, STAGING...), else the command's name when there is more than one
   const sel = p.commands.find((c) => c.id === p.activeCommandId) || p.commands[0];
   const dry = !!sel && looksLikeDryRun(sel.cmd, sel.label);
-  const tag = sel && (p.commands.length > 1 || dry) ? sel.label : '';
+  const t = sel ? deployTarget(sel.cmd, sel.label) : null;
+  const tag = !sel ? '' : dry ? sel.label : t ? t.short : p.commands.length > 1 ? sel.label : '';
   if (cap.cmdTag.textContent !== tag) cap.cmdTag.textContent = tag;
   cap.cmdTag.classList.toggle('dry', dry);
-  cap.btn.setAttribute('aria-label', `${dry ? 'Dry run' : 'Deploy'} ${p.name}${tag ? ` (${tag})` : ''}. Press and hold.`);
+  const env = !dry && t ? t.env : '';
+  if ((cap.cmdTag.dataset.env || '') !== env) { if (env) cap.cmdTag.dataset.env = env; else delete cap.cmdTag.dataset.env; }
+  const branch = branchOf(p);
+  cap.btn.setAttribute('aria-label', `${dry ? 'Dry run' : 'Deploy'} ${p.name}${tag ? ` (${tag})` : ''}${branch ? `, from ${branch}` : ''}. Press and hold.`);
   const s = run?.status;
   cap.el.classList.toggle('is-running', s === 'running' || s === 'starting');
   cap.el.classList.toggle('is-awaiting', s === 'awaiting_approval');
@@ -324,8 +331,11 @@ function updateVfd(cap) {
   else if (run?.status === 'success' && Date.now() - run.endedAt < 15 * 60e3) line = `SHIPPED ${dur(run.endedAt - run.startedAt).toUpperCase()}`;
   else if (run?.status === 'success') line = `✓ ${ago(run.endedAt).toUpperCase()}`;
   else if (!run && p.commands.length) line = 'READY';
-  const tone = !p.commands.length ? 'off' : st.tone;
   line = word(line);
+  // idle readout names the branch, so it is on screen before a key starts the hold
+  const branch = branchOf(p);
+  if (branch && line === word('READY')) line = `ON ${branch.toUpperCase()}`;
+  const tone = !p.commands.length ? 'off' : st.tone;
   const cls = `mini-vfd${tone ? ' tone-' + tone : ''}`;
   if (cap.vfd.className !== cls) cap.vfd.className = cls;
   if (cap.vfdName.textContent !== p.name) cap.vfdName.textContent = p.name;
@@ -386,6 +396,26 @@ function statusFor(p, run) {
   }
 }
 
+// the folder's branch as one short string: "main", or the short sha on a detached HEAD
+function branchOf(p) {
+  const head = S.git[p.id];
+  return head?.branch || (head?.detached ? head.sha : '');
+}
+
+// "⎇ main → PROD": where a press goes, for the info bubble
+function whereRow(p) {
+  const sel = p.commands.find((c) => c.id === p.activeCommandId) || p.commands[0];
+  const t = sel ? deployTarget(sel.cmd, sel.label) : null;
+  const branch = branchOf(p);
+  if (!branch && !t) return [];
+  const detached = !!S.git[p.id]?.detached;
+  return [h('div', { class: 'where' },
+    ...(branch ? [h('span', { class: `w-branch${detached ? ' detached' : ''}`, title: detached ? 'Detached HEAD, not on a branch' : 'Current branch' }, `⎇ ${branch}`)] : []),
+    ...(branch && t ? [h('span', { class: 'w-arrow' }, '→')] : []),
+    ...(t ? [h('span', { class: 'w-env', 'data-env': t.env }, t.short)] : []),
+  )];
+}
+
 function placeBubble(cap) {
   // centred on the cap along the bar, clear of the plate across it
   const r = cap.btn.getBoundingClientRect();
@@ -415,6 +445,7 @@ function showInfoBubble(cap) {
     h('h3', {}, p.name),
     h('div', { class: 'vfd' }, h('span', {}, word(st.vfd)), h('span', {}, st.side)),
     h('div', { class: 'line' }, st.line),
+    ...whereRow(p),
     h('div', { class: 'hint' }, ACTIVE.has(S.latest[p.id]?.status) && S.latest[p.id].status !== 'awaiting_approval' ? 'click for the live log' : 'hold to launch · right-click for options'),
   );
   placeBubble(cap);
@@ -521,6 +552,8 @@ function beginHold(cap, via) {
   sfx.press();
   cap.el.classList.add('is-holding');
   api.barHold?.(true);
+  // a key hold has no hover: show where the press goes while it charges, so letting go aborts in time
+  if (via.startsWith('key') && !S.announce) showInfoBubble(cap);
   const holdMs = Math.max(0, Number(S.settings.holdMs ?? 650));
   const state = { cap, via, start: performance.now(), lit: 0, fired: false, raf: 0, timer: 0, awaitingRunId: awaiting ? run.id : null };
   S.holding = state;
@@ -546,6 +579,10 @@ function endHold() {
   const { cap } = state;
   cap.el.classList.remove('is-holding');
   api.barHold?.(false);
+  if (state.via.startsWith('key') && !S.announce && S.hoverId !== cap.project.id) {
+    if (!state.fired) hideBubble();
+    else setTimeout(() => { if (!S.announce && S.hoverId !== cap.project.id) hideBubble(); }, 1500);
+  }
   if (!state.fired) {
     sfx.release();
     const lit = cap.leds.filter((l) => l.classList.contains('charge')).reverse();
@@ -781,6 +818,7 @@ $('#knob').addEventListener('click', () => { sfx.click(); endAnnounce(true); api
 api.on((evt) => {
   switch (evt.type) {
     case 'projects': S.projects = evt.projects; render(); break;
+    case 'git': S.git = evt.git || {}; render(); refreshBubble(); break;
     case 'run': onRun(evt.run); break;
     case 'log': {
       const run = S.latest[evt.projectId];
@@ -810,6 +848,7 @@ const state = await api.getState();
 S.projects = state.projects;
 S.settings = state.settings;
 S.latest = state.latest || {};
+S.git = state.git || {};
 applyPack(state.look?.pack);
 configureAudio(S.settings);
 try { S.bank = Number(localStorage.getItem('ploink.bank')) || 0; } catch { S.bank = 0; }

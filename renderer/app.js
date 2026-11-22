@@ -1,7 +1,7 @@
 import { h, capVars, colorFromIcon, colorFromName, monogram, ansiToHtml, ago, clock, dur, hostOf, CAP_COLORS, placeLeds } from './util.js';
 import { sfx, configure as configureAudio, unlock as unlockAudio } from './audio.js';
 import * as fx from './fx.js';
-import { commandSteps, commandSummary, commandDisplay, looksLikeDryRun } from './steps.js';
+import { commandSteps, commandSummary, commandDisplay, looksLikeDryRun, deployTarget } from './steps.js';
 import { applyPack, capColor, capShape, packOutline, readoutStyle, logStyle, quip, scramble, glyphText, specimenSvg, specimenName, word, previewVars } from './look.js';
 
 const api = window.ploink || (await import('./mock.js')).mockBridge;
@@ -14,6 +14,7 @@ const S = {
   projects: [],
   settings: {},
   latest: {},
+  git: {}, // projectId -> { branch } | { detached, sha } | null
   actions: {}, // projectId -> actionId -> latest run of that action key
   mcp: {},
   shortcut: {},
@@ -31,6 +32,7 @@ const ICON = {
   dots: () => h('span', { html: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="12.5" cy="8" r="1.4" fill="currentColor"/></svg>' }),
   log: () => h('span', { html: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' }),
   plus: () => h('span', { html: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' }),
+  branch: () => h('span', { class: 'ico', html: '<svg width="11" height="11" viewBox="0 0 16 16"><circle cx="4.5" cy="3.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="4.5" cy="12.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="11.5" cy="5.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 5.3v5.4M11.5 7.3c0 2.5-2.2 3-5.2 3.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' }),
   x: () => h('span', { html: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' }),
 };
 
@@ -203,6 +205,7 @@ function createBay(p) {
     (refs.name = h('div', { class: 'bay-name' })),
     (refs.url = h('div', { class: 'bay-url' })),
     (refs.selector = h('div', { class: 'selector' })),
+    (refs.target = h('div', { class: 'bay-target' })),
     (refs.keys = h('div', { class: 'keys' })),
     (refs.lcd = h('button', { class: 'lcd', title: 'Open deploy log', onclick: () => openDrawer(bay.project.id, bay.lcdOverride?.runId) },
       h('div', { class: 'lcd-row' }, (refs.status = h('span', { class: 'lcd-status' })), (refs.side = h('span', { class: 'lcd-side' }))),
@@ -279,6 +282,7 @@ function updateBay(bay) {
     refs.url.textContent = prettyPath(p.cwd);
   }
   updateSelector(bay);
+  updateTarget(bay);
   updateKeys(bay);
 
   const status = run?.status;
@@ -329,6 +333,29 @@ function updateSelector(bay) {
   }
 }
 
+// where a press goes, shown before the hold: the branch the folder is on, and the
+// environment the selected command deploys to
+function updateTarget(bay) {
+  const p = bay.project;
+  const head = S.git[p.id];
+  const cmd = activeCmd(p);
+  const t = cmd ? deployTarget(cmd.cmd, cmd.label) : null;
+  const branch = head?.branch || (head?.detached ? head.sha : '');
+  const el = bay.refs.target;
+  const sig = `${branch}|${head?.detached ? 1 : 0}|${t?.env || ''}|${t?.from || ''}`;
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  const parts = [];
+  if (branch) parts.push(h('span', { class: `bt-branch${head.detached ? ' detached' : ''}` }, ICON.branch(), h('span', { class: 'bt-name' }, branch)));
+  if (branch && t) parts.push(h('span', { class: 'bt-arrow' }, '→'));
+  if (t) parts.push(h('span', { class: 'bt-env', 'data-env': t.env }, t.short));
+  el.replaceChildren(...parts);
+  el.title = [
+    branch && (head.detached ? `Detached HEAD at ${head.sha}, not on a branch` : `On branch ${branch}`),
+    t && `Deploys to ${t.env}${t.from === 'label' ? ', going by the button label' : ''}`,
+  ].filter(Boolean).join(' · ');
+}
+
 function selectCommand(bay, commandId) {
   const p = bay.project;
   if (p.activeCommandId === commandId) return;
@@ -336,6 +363,7 @@ function selectCommand(bay, commandId) {
   sfx.click();
   p.activeCommandId = commandId;
   updateSelector(bay);
+  updateTarget(bay);
   updateLcd(bay);
   api.saveProject({ id: p.id, activeCommandId: commandId });
 }
@@ -2082,6 +2110,10 @@ api.on((evt) => {
       if (S.drawer.open) renderDrawerHead();
       break;
     case 'run': onRun(evt.run); break;
+    case 'git':
+      S.git = evt.git || {};
+      for (const bay of S.bays.values()) updateTarget(bay);
+      break;
     case 'log': onLog(evt); break;
     case 'activity': onActivity(evt.event); break;
     case 'mcp': S.mcp = evt.mcp; updateLamps(); break;
@@ -2156,7 +2188,7 @@ if (api.isMock) {
 setInterval(() => { for (const bay of S.bays.values()) updateLcd(bay); if (S.drawer.open) { const r = S.latest[S.drawer.projectId]; if (r && ACTIVE.has(r.status)) renderDrawerHead(); } }, 1000);
 
 const state = await api.getState();
-Object.assign(S, { projects: state.projects, settings: state.settings, latest: state.latest || {}, actions: state.actions || {}, mcp: state.mcp || {}, shortcut: state.shortcut || {}, appPath: state.appPath || '', version: state.version });
+Object.assign(S, { projects: state.projects, settings: state.settings, latest: state.latest || {}, git: state.git || {}, actions: state.actions || {}, mcp: state.mcp || {}, shortcut: state.shortcut || {}, appPath: state.appPath || '', version: state.version });
 S.look = state.look || null;
 applyPack(S.look?.pack);
 updateBrand();

@@ -16,12 +16,15 @@ const now = Date.now();
 const HEALTH = `curl -fsSL -o /dev/null --max-time 15 -w '%{http_code} · %{time_total}s' "$PLOINK_URL"`;
 const projects = [
   { id: 'p1', name: 'Pixel Forge', cwd: '/Users/you/code/pixel-forge', url: 'https://pixelforge.example', icon: ICONS.forge, color: '#f76b15', commands: [{ id: 'c1', label: 'prod', cmd: 'git pull --ff-only\nnpm ci\n# build, then ship what is on disk\nnpm run build\nnpm run deploy -- --prod \\\n  --message "from Ploink"' }, { id: 'c2', label: 'preview', cmd: 'npm run deploy:preview' }], activeCommandId: 'c1', actions: [{ id: 'x1', label: 'health', kind: 'check', cmd: HEALTH, agents: true, afterDeploy: true }, { id: 'x2', label: 'dev', kind: 'service', cmd: 'npm run dev' }, { id: 'x3', label: 'pull', kind: 'oneshot', cmd: 'git pull --ff-only', agents: true }] },
-  { id: 'p2', name: 'Inkwell Blog', cwd: '/Users/you/code/inkwell', url: 'https://inkwell.example', icon: ICONS.ink, color: '#1e93f0', commands: [{ id: 'c3', label: 'deploy', cmd: 'pnpm run deploy' }], activeCommandId: 'c3', actions: [{ id: 'x4', label: 'test', kind: 'oneshot', cmd: 'pnpm test', agents: true }, { id: 'x5', label: 'ssl days', kind: 'check', cmd: 'echo "34 days"' }] },
+  { id: 'p2', name: 'Inkwell Blog', cwd: '/Users/you/code/inkwell', url: 'https://inkwell.example', icon: ICONS.ink, color: '#1e93f0', commands: [{ id: 'c3', label: 'production', cmd: 'pnpm run deploy' }, { id: 'c3s', label: 'staging', cmd: 'pnpm run deploy:staging' }], activeCommandId: 'c3s', actions: [{ id: 'x4', label: 'test', kind: 'oneshot', cmd: 'pnpm test', agents: true }, { id: 'x5', label: 'ssl days', kind: 'check', cmd: 'echo "34 days"' }] },
   { id: 'p3', name: 'Tidepool API', cwd: '/Users/you/code/tidepool', url: 'https://api.tidepool.example', icon: ICONS.tide, color: '#13a596', commands: [{ id: 'c4', label: 'fly', cmd: 'fly deploy' }], activeCommandId: 'c4', actions: [{ id: 'x6', label: 'health', kind: 'check', cmd: HEALTH, agents: true }, { id: 'x7', label: 'migrate', kind: 'oneshot', cmd: 'fly ssh console -C "npm run migrate"', hold: true }] },
   { id: 'p4', name: 'Bakery Orders', cwd: '/Users/you/code/bakery', url: 'https://orders.bakery.example', icon: ICONS.donut, color: '#d6409f', commands: [{ id: 'c5', label: 'prod', cmd: 'vercel deploy --prod' }, { id: 'c6', label: 'preview', cmd: 'vercel deploy' }], activeCommandId: 'c5', requireApproval: true, actions: [{ id: 'x8', label: 'seed', kind: 'oneshot', cmd: 'npm run db:seed', trusted: false, agents: true }] },
   { id: 'p5', name: 'Northwind Docs', cwd: '/Users/you/code/northwind-docs', url: 'https://docs.northwind.example', icon: ICONS.leaf, color: '#2fa86a', commands: [{ id: 'c7', label: 'deploy', cmd: 'npx wrangler deploy' }], activeCommandId: 'c7' },
   { id: 'p6', name: 'Atlas CLI', cwd: '/Users/you/code/atlas', url: '', icon: null, color: '#e9e4d4', commands: [{ id: 'c8', label: 'publish', cmd: 'npm publish' }], activeCommandId: 'c8' },
 ];
+
+// the branch each mock project's folder is on
+const GIT = { p1: { branch: 'main' }, p2: { branch: 'feat/dark-mode' }, p3: { branch: 'main' }, p4: { branch: 'fix/checkout-rounding' }, p5: { branch: null, detached: true, sha: '3f9c2ab' }, p6: null };
 
 let settings = { shortcut: 'F5', holdMs: 650, sound: true, volume: 0.7, mcpEnabled: true, mcpPort: 47321, mcpAuth: 'token', mcpClients: [{ id: 'k1', name: 'Claude Code', token: 'plk_demo_7Qm2v9XcL0aR4tYw8nBz', createdAt: now - 86400e3, lastUsedAt: now - 9 * 60e3 }], agentApproval: 'auto', systemNotifications: false, announce: true, shortcutOpens: 'bar', bar: { enabled: true, edge: 'bottom', visibility: 'shortcut', size: 'medium', style: 'mini' }, buttonShape: 'round', iconScale: 0.5, barLabels: true, usage: { claude: true, codex: true }, hideOnBlur: false, launchAtLogin: false, deployTimeoutMin: 30 };
 const runs = new Map();
@@ -158,7 +161,7 @@ export const mockBridge = {
       l[p.id] = summary(latest(p.id));
       for (const a of p.actions || []) { const r = latest(p.id, a.id); if (r) (acts[p.id] ||= {})[a.id] = summary(r); }
     }
-    return { projects: structuredClone(projects), settings: structuredClone(settings), latest: l, actions: acts, mcp: { running: true, port: 47321, url: 'http://127.0.0.1:47321/mcp' }, shortcut: { ok: true }, platform: 'darwin', appPath: '/Applications/Ploink.app/Contents/Resources/app', version: '0.2.0', look: lookState() };
+    return { projects: structuredClone(projects), settings: structuredClone(settings), latest: l, git: { ...GIT }, actions: acts, mcp: { running: true, port: 47321, url: 'http://127.0.0.1:47321/mcp' }, shortcut: { ok: true }, platform: 'darwin', appPath: '/Applications/Ploink.app/Contents/Resources/app', version: '0.2.0', look: lookState() };
   },
   async saveProject(input) {
     let p = projects.find((x) => x.id === input.id);
@@ -261,5 +264,6 @@ window.__mock = {
     return mockBridge.deploy({ projectId: p.id, commandId: p.activeCommandId }, 'agent', reason);
   },
   failNext(index) { failNext.add(projects[index].id); },
+  branch(index, name) { GIT[projects[index].id] = name ? { branch: name } : null; emit('git', { git: { ...GIT } }); },
   emit,
 };

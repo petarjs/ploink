@@ -8,6 +8,7 @@ import { detectProject, fileToDataUrl, suggestActions } from './detect.mjs';
 import { fetchFavicon } from './favicon.mjs';
 import { createMcp } from './mcp.mjs';
 import { createBar } from './bar.mjs';
+import { createGitWatch } from './git.mjs';
 import { Usage } from './usage.mjs';
 import { loadShellEnv } from './shellenv.mjs';
 import { loadPackDir, packCatalog, resolvePack, packLocked, installPackFile, removePackFile, DEFAULT_PACK_ID } from './packs.mjs';
@@ -29,6 +30,7 @@ let store;
 let runner;
 let mcp;
 let bar;
+let git; // each project's current git branch, polled
 let usage;
 let license;
 let pro = null; // the private Pro module, only in official builds
@@ -92,6 +94,7 @@ function publicState() {
     projects: store.projects,
     settings: store.settings,
     latest,
+    git: git?.state || {},
     actions: actionRuns(),
     mcp: mcp.state,
     shortcut: shortcutState,
@@ -163,6 +166,7 @@ function trustButton(projectId, { commandId, actionId }) {
 
 function broadcastProjects() {
   send('projects', { projects: store.projects });
+  git?.refresh();
   bar?.projectsChanged();
   updateTray();
 }
@@ -235,6 +239,7 @@ function createWindow() {
 
 function showWindow() {
   if (!win || win.isDestroyed()) createWindow();
+  git?.refresh();
   const cursor = screen.getCursorScreenPoint();
   const display = screen.getDisplayNearestPoint(cursor);
   const b = win.getBounds();
@@ -278,6 +283,7 @@ function hideWindow() {
 }
 
 function onShortcut() {
+  git?.refresh(); // the bar and console show the branch: make it current before they appear
   if (store.settings.bar?.enabled && store.settings.shortcutOpens !== 'console' && bar) {
     bar.toggleSummon();
   } else toggleWindow();
@@ -673,6 +679,8 @@ app.whenReady().then(async () => {
     else if (run.status === 'failed') notify(`${run.projectName} deploy failed`, `exit ${run.exitCode} · ${took}`, () => { showWindow(); send('open-run', { runId: run.id }); });
   });
 
+  git = createGitWatch({ projects: () => store.projects, onChange: (state) => send('git', { git: state }) });
+  git.start();
   setupIpc();
   setupMenu();
   createWindow();

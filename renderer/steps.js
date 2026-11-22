@@ -65,3 +65,66 @@ export function printedDryRun(lines) {
   // eslint-disable-next-line no-control-regex
   return lines.some((l) => DRY_RUN_OUTPUT_RE.test(String(l).replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')));
 }
+
+// Which environment a deploy command ships to, read from what it runs. Explicit flags win
+// (--env staging, --stage prod, --mode production, --target preview, --prod), then the
+// platform default (vercel and netlify deploy a preview unless told --prod), then a script
+// name like deploy:staging, then the button's label. Returns null when nothing says, so
+// the UI never guesses.
+const ENV_WORDS = {
+  production: ['production', 'prod', 'prd', 'live'],
+  staging: ['staging', 'stage', 'stg'],
+  preview: ['preview', 'draft'],
+  development: ['development', 'dev'],
+};
+const ENV_OTHER = ['qa', 'uat', 'sandbox', 'canary', 'beta', 'demo'];
+const ENV_SHORT = { production: 'PROD', staging: 'STAGING', preview: 'PREVIEW', development: 'DEV' };
+const INSTALL_RE = /^(?:npm|pnpm|yarn|bun)\s+(?:i|install|ci|add)\b/;
+const PLATFORM_RE = /^(?:(?:npx|bunx)\s+|(?:pnpm|yarn)\s+(?:exec\s+|dlx\s+)?)?(vercel|netlify|ntl)(?:\s+(\S+))?/;
+
+function knownEnv(word) {
+  const w = String(word || '').toLowerCase();
+  for (const [name, words] of Object.entries(ENV_WORDS)) if (words.includes(w)) return name;
+  return ENV_OTHER.includes(w) ? w : null;
+}
+
+function target(env, from) {
+  return env ? { env, short: ENV_SHORT[env] || env.toUpperCase().slice(0, 10), from } : null;
+}
+
+// the simple commands inside a button: steps, then && / || / ; / | chains, comments dropped
+function simpleCommands(cmd) {
+  return commandSteps(cmd)
+    .map((s) => s.replace(/(^|\s)#.*$/, '$1'))
+    .flatMap((s) => s.split(/&&|\|\||;|\|/))
+    .map((s) => s.trim().replace(/^(?:[A-Z_][A-Z0-9_]*=\S*\s+)+/, '')) // drop leading VAR=value
+    .filter(Boolean);
+}
+
+export function deployTarget(cmd, label = '') {
+  const parts = simpleCommands(cmd);
+  for (const part of parts) {
+    if (INSTALL_RE.test(part)) continue;
+    const any = /(?:^|\s)--(?:env|environment|stage)(?:=|\s+)["']?([\w.-]+)/i.exec(part);
+    if (any) return target(knownEnv(any[1]) || any[1].toLowerCase().slice(0, 16), 'command');
+    const known = /(?:^|\s)--(?:mode|target|context)(?:=|\s+)["']?([\w.-]+)/i.exec(part);
+    if (known && knownEnv(known[1])) return target(knownEnv(known[1]), 'command');
+    if (/(?:^|\s)--prod(?:uction)?(?:\s|$)/i.test(part)) return target('production', 'command');
+  }
+  for (const part of parts) {
+    const m = PLATFORM_RE.exec(part);
+    if (!m) continue;
+    const sub = m[2] || '';
+    const deploys = m[1] === 'vercel' ? !sub || sub === 'deploy' || sub.startsWith('-') : sub === 'deploy';
+    if (deploys) return target('preview', 'command');
+  }
+  for (const part of parts) {
+    const m = /^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?([\w:.-]+)|^make\s+([\w:.-]+)/.exec(part);
+    const script = m && (m[1] || m[2]);
+    if (!script) continue;
+    const env = script.split(/[:._-]/).slice(1).map(knownEnv).find(Boolean);
+    if (env) return target(env, 'command');
+  }
+  const fromLabel = String(label || '').split(/[^a-z0-9]+/i).map(knownEnv).find(Boolean);
+  return target(fromLabel, 'label');
+}

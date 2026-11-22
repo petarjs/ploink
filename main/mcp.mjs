@@ -3,7 +3,8 @@
 import http from 'node:http';
 import path from 'node:path';
 import { stripAnsi, TERMINAL } from './runner.mjs';
-import { commandSteps, commandDisplay } from '../renderer/steps.js';
+import { commandSteps, commandDisplay, deployTarget } from '../renderer/steps.js';
+import { gitHead, gitLabel } from './git.mjs';
 
 const SUPPORTED_VERSIONS = ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'];
 const LATEST = SUPPORTED_VERSIONS[SUPPORTED_VERSIONS.length - 1];
@@ -216,6 +217,8 @@ function runReport(run, tail = 40) {
     command: run.commandLabel,
     shell_command: run.cmd,
     dry_run: run.dryRun || undefined,
+    branch: run.branch || undefined,
+    target: run.target || undefined,
     status: run.status,
     final: TERMINAL.has(run.status),
     exit_code: run.exitCode,
@@ -283,10 +286,11 @@ export function createMcp({ store, runner, onAddProject, onAgentActivity, getUsa
           name: p.name,
           bank: p.bank || undefined,
           path: p.cwd,
+          branch: gitLabel(gitHead(p.cwd)) || undefined,
           url: p.url || undefined,
           commands: p.commands.map((c) => {
             const steps = commandSteps(c.cmd);
-            return { id: c.id, label: c.label, command: commandDisplay(c.cmd), steps: steps.length > 1 ? steps : undefined, selected: c.id === p.activeCommandId, needs_first_approval: c.trusted === false || undefined };
+            return { id: c.id, label: c.label, command: commandDisplay(c.cmd), steps: steps.length > 1 ? steps : undefined, target: deployTarget(c.cmd, c.label)?.env, selected: c.id === p.activeCommandId, needs_first_approval: c.trusted === false || undefined };
           }),
           actions: actions.length ? actions : undefined,
           needs_approval_for_agents: p.requireApproval || store.settings.agentApproval === 'ask',

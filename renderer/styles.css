@@ -397,6 +397,27 @@ img { -webkit-user-drag: none; }
 .sel-opt:not(.active):hover { color: var(--ink-2); }
 .selector.single .selector-thumb { display: none; }
 .selector.single .sel-opt { color: var(--muted); cursor: default; text-transform: none; letter-spacing: 0.02em; font-weight: 500; font-size: 10.5px; text-align: center; }
+/* where a press goes: branch -> target environment, shown before the hold */
+.bay-target {
+  position: relative; z-index: 2; margin-top: 7px; height: 18px; max-width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font: 600 10.5px/1 var(--mono); color: var(--ink-2); white-space: nowrap;
+}
+.bay-target:empty { visibility: hidden; }
+.bt-branch { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+.bt-branch .ico { display: inline-flex; color: var(--muted); flex: none; }
+.bt-name { overflow: hidden; text-overflow: ellipsis; max-width: 128px; }
+.bt-branch.detached .bt-name { color: var(--tone-warn, #ffc861); }
+.bt-arrow { color: var(--muted); flex: none; }
+.bt-env {
+  flex: none; font: 700 9px/1 var(--mono); letter-spacing: 0.1em; padding: 3px 6px 3px 7px; border-radius: 5px;
+  color: var(--env, #c8c8c8); background: color-mix(in srgb, var(--env, #c8c8c8) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--env, #c8c8c8) 35%, transparent);
+}
+.bt-env[data-env='production'] { --env: #ff7a6e; color: #1c0503; background: var(--env); box-shadow: 0 0 10px color-mix(in srgb, var(--env) 35%, transparent); }
+.bt-env[data-env='staging'] { --env: #7cc4ff; }
+.bt-env[data-env='preview'] { --env: #c9a6ff; }
+.bt-env[data-env='development'] { --env: #8fd6a0; }
 
 /* VFD readout */
 .lcd {

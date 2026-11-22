@@ -5,7 +5,8 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import { loadShellEnv, userShell } from './shellenv.mjs';
 import { uid } from './store.mjs';
-import { commandSteps, commandScript, commandDisplay, looksLikeDryRun, printedDryRun } from '../renderer/steps.js';
+import { commandSteps, commandScript, commandDisplay, looksLikeDryRun, printedDryRun, deployTarget } from '../renderer/steps.js';
+import { gitHead, gitLabel } from './git.mjs';
 
 export { looksLikeDryRun, printedDryRun };
 
@@ -16,7 +17,7 @@ const CHECK_TIMEOUT_MS = 2 * 60 * 1000;
 const VERIFY_TRIES = 4;
 const VERIFY_GAP_MS = 5000;
 export const TERMINAL = new Set(['success', 'failed', 'cancelled', 'denied', 'expired', 'stopped']);
-const SUMMARY_KEYS = ['id', 'projectId', 'projectName', 'commandId', 'commandLabel', 'actionId', 'kind', 'cmd', 'cwd', 'source', 'client', 'reason', 'status', 'phase', 'value', 'url', 'verify', 'dryRun', 'createdAt', 'startedAt', 'endedAt', 'exitCode'];
+const SUMMARY_KEYS = ['id', 'projectId', 'projectName', 'commandId', 'commandLabel', 'actionId', 'kind', 'cmd', 'cwd', 'source', 'client', 'reason', 'status', 'phase', 'value', 'url', 'verify', 'dryRun', 'branch', 'target', 'createdAt', 'startedAt', 'endedAt', 'exitCode'];
 
 
 // eslint-disable-next-line no-control-regex
@@ -144,6 +145,9 @@ export class Runner extends EventEmitter {
       parse: action?.parse || '',
       verifyAction: verify ? { label: verify.label, cmd: commandScript(verify.cmd), parse: verify.parse } : null,
       dryRun: !action && looksLikeDryRun(button.cmd, button.label),
+      // what the receipt says it shipped from and to
+      branch: gitLabel(gitHead(project.cwd)),
+      target: !action ? deployTarget(button.cmd, button.label)?.env || null : null,
       // the command that really ships, named in the "nothing was deployed" note
       shipLabel: !action ? (project.commands.find((c) => c.id !== command.id && !looksLikeDryRun(c.cmd, c.label))?.label || '') : '',
       untrusted: button.trusted === false,
@@ -244,7 +248,8 @@ export class Runner extends EventEmitter {
     // a multi-step command lists its steps; a one-step command shows the line it runs
     const steps = run.stepList?.length > 1 ? run.stepList.map((s, i) => `\x1b[2m${i + 1}. ${s}\x1b[0m`) : [`\x1b[2m$ ${run.cmd}\x1b[0m`];
     if (run.stepList?.length > 1) steps.push('\x1b[2m   (each step runs only if the one before it succeeded)\x1b[0m');
-    this.pushLines(run, [...steps, `\x1b[2m  in ${run.cwd}\x1b[0m`, '']);
+    const where = [run.branch && `on ${run.branch}`, run.target && `to ${run.target}`].filter(Boolean).join(' ');
+    this.pushLines(run, [...steps, `\x1b[2m  in ${run.cwd}${where ? ` · ${where}` : ''}\x1b[0m`, '']);
     run.outStart = run.log.length;
     this.emitUpdate(run);
 
