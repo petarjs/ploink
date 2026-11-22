@@ -1,7 +1,7 @@
 {
   "name": "ploink",
   "productName": "Ploink",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Hold one button, ship the fix. A deploy console for your Mac: one tactile launch button per project, a launch bar, and an MCP server so coding agents can deploy with your permission.",
   "homepage": "https://ploink.dev",
   "repository": {

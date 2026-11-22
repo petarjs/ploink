@@ -441,7 +441,7 @@ export function createMcp({ store, runner, onAddProject, onAgentActivity, getUsa
           return reply({
             protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : LATEST,
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: 'ploink', title: 'Ploink deploy cockpit', version: '0.3.2' },
+            serverInfo: { name: 'ploink', title: 'Ploink deploy cockpit', version: '0.3.3' },
             instructions: INSTRUCTIONS,
           });
         }
