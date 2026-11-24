@@ -4,7 +4,7 @@
 
 **Hold one button. Ship the fix.**
 
-[ploink.dev](https://ploink.dev) · [Founding pre-order](https://vizzmo.gumroad.com/l/ploink) · MIT licensed · macOS (Apple Silicon)
+[ploink.dev](https://ploink.dev) · [Ploink Pro](https://vizzmo.gumroad.com/l/ploink) · MIT licensed · macOS (Apple Silicon)
 
 A deploy console for your Mac. Each project gets a big, physical-feeling button.
 Hold it, the LED ring charges, it fires, and the VFD readout streams the deploy.
@@ -22,7 +22,7 @@ in your login shell, exactly like you would run them by hand.
 **Beta download (unsigned):** get the latest `Ploink.dmg` from
 [Releases](https://github.com/petarjs/ploink/releases), drag Ploink to Applications,
 then right-click it and choose **Open** the first time. macOS shows a warning because
-the beta isn't signed yet. The signed, notarized build goes to founding members first.
+the beta isn't signed yet. The signed, notarized build is planned for 31 January 2027.
 
 **From source:**
 

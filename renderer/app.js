@@ -2053,7 +2053,7 @@ function openLook() {
         : h('div', { class: 'row' }, input, h('button', { class: 'keycap primary', disabled: busy, onclick: activate }, busy ? 'Checking…' : 'Unlock')),
       msg ? h('div', { class: `pro-msg ${msg.tone}` }, msg.text) : null,
       h('div', { class: 'pro-links' },
-        h('a', { onclick: () => api.openUrl('https://ploink.dev/#preorder') }, 'Get Pro'),
+        h('a', { onclick: () => api.openUrl('https://ploink.dev/#pricing') }, 'Get Pro'),
         h('a', { onclick: () => api.openUrl('https://ploink.dev/founders/welcome/') }, 'Find my founder code')),
     );
   }
